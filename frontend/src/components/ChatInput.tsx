@@ -1,7 +1,9 @@
-import { useState, useRef, useEffect, type FormEvent, type KeyboardEvent } from 'react';
+import { useState, useRef, useEffect, useCallback, type FormEvent, type KeyboardEvent } from 'react';
 import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 import SendIcon from '@mui/icons-material/ArrowUpwardRounded';
+import MicrophoneButton from './MicrophoneButton';
+import { useSpeechToText } from '../hooks/useSpeechToText';
 import {
   colorSemantics,
   spacing,
@@ -17,6 +19,20 @@ interface ChatInputProps {
 
 export default function ChatInput({ onSend, disabled = false }: ChatInputProps) {
   const [value, setValue] = useState('');
+
+  const handleVoiceTranscript = useCallback((text: string) => {
+    onSend(text);
+    setValue('');
+  }, [onSend]);
+
+  const handleVoiceInterim = useCallback((text: string) => {
+    setValue(text);
+  }, []);
+
+  const { isListening, isSupported, toggle: toggleListening } = useSpeechToText({
+    onTranscript: handleVoiceTranscript,
+    onInterim: handleVoiceInterim,
+  });
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -101,6 +117,12 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
               color: colorSemantics.text.disabled,
             },
           }}
+        />
+        <MicrophoneButton
+          isListening={isListening}
+          isSupported={isSupported}
+          onToggle={toggleListening}
+          disabled={disabled}
         />
         <IconButton
           type="submit"

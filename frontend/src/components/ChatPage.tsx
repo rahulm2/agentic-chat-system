@@ -7,6 +7,7 @@ import ConversationSidebar from './ConversationSidebar';
 import { useMessages, useStreamingStatus, useChatDispatch, useConversation } from '../context';
 import { useSSEStream } from '../hooks/useSSEStream';
 import { useLogout } from '../hooks/useAuth';
+import { useTextToSpeech } from '../hooks/useTextToSpeech';
 import {
   useDeleteMessage,
   useConversationList,
@@ -22,6 +23,7 @@ export default function ChatPage() {
   const dispatch = useChatDispatch();
   const { currentConversationId, metadata } = useConversation();
   const logoutMutation = useLogout();
+  const { voiceEnabled, toggleVoice, play: playTts } = useTextToSpeech();
 
   // Pending conversation to load (sidebar selection or initial hydration)
   const [pendingConvId, setPendingConvId] = useState<string | null>(null);
@@ -94,6 +96,20 @@ export default function ChatPage() {
     }
   };
 
+  // Auto-play TTS when streaming finishes for the latest assistant message
+  const prevStreamingStatusRef = useRef(streamingStatus);
+  useEffect(() => {
+    const wasStreaming = prevStreamingStatusRef.current === 'streaming';
+    prevStreamingStatusRef.current = streamingStatus;
+
+    if (wasStreaming && streamingStatus === 'idle' && voiceEnabled) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage?.role === 'assistant' && lastMessage.content) {
+        playTts(lastMessage.content, lastMessage.id);
+      }
+    }
+  }, [streamingStatus, voiceEnabled, messages, playTts]);
+
   const isStreaming = streamingStatus === 'streaming' || isPending;
 
   return (
@@ -126,6 +142,8 @@ export default function ChatPage() {
           onNewChat={handleNewChat}
           sidebarOpen={sidebarOpen}
           onToggleSidebar={handleToggleSidebar}
+          voiceEnabled={voiceEnabled}
+          onToggleVoice={toggleVoice}
         />
         <MessageList
           messages={messages}

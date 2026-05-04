@@ -31,11 +31,14 @@ if (hasDb) {
   app.use("/api/conversations/*", container.guard);
   app.use("/api/conversations", container.guard);
   app.use("/api/messages/*", container.guard);
+  app.use("/api/tts", container.guard);
+  app.use("/api/tts/*", container.guard);
 
   // Controllers
   applyController(app, container.authController);
   applyController(app, container.conversationController);
   applyController(app, container.messageController);
+  applyController(app, container.ttsController);
 }
 
 // Error handling

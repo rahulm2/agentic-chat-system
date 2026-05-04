@@ -6,6 +6,7 @@ import LogoutIcon from '@mui/icons-material/LogoutRounded';
 import AddIcon from '@mui/icons-material/AddRounded';
 import MenuIcon from '@mui/icons-material/MenuRounded';
 import MenuOpenIcon from '@mui/icons-material/MenuOpenRounded';
+import VoiceToggle from './VoiceToggle';
 import {
   colorSemantics,
   spacing,
@@ -19,9 +20,11 @@ interface ChatHeaderProps {
   onNewChat: () => void;
   sidebarOpen: boolean;
   onToggleSidebar: () => void;
+  voiceEnabled: boolean;
+  onToggleVoice: () => void;
 }
 
-export default function ChatHeader({ onLogout, onNewChat, sidebarOpen, onToggleSidebar }: ChatHeaderProps) {
+export default function ChatHeader({ onLogout, onNewChat, sidebarOpen, onToggleSidebar, voiceEnabled, onToggleVoice }: ChatHeaderProps) {
   return (
     <Box
       sx={{
@@ -101,6 +104,7 @@ export default function ChatHeader({ onLogout, onNewChat, sidebarOpen, onToggleS
             <AddIcon fontSize="small" />
           </IconButton>
         </Tooltip>
+        <VoiceToggle voiceEnabled={voiceEnabled} onToggle={onToggleVoice} />
         <Tooltip title="Log out">
           <IconButton
             onClick={onLogout}

@@ -11,3 +11,4 @@ export type {
 } from './conversations';
 export { login, register, fetchCurrentUser } from './auth';
 export type { User, AuthResponse, LoginParams, RegisterParams } from './auth';
+export { synthesizeSpeech } from './tts';
