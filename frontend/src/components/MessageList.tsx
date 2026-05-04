@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
 import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
 import MessageBubble from './MessageBubble';
-import { colorSemantics, spacing, typographyPresets } from '../design-system';
+import WelcomePrompts from './WelcomePrompts';
+import { spacing } from '../design-system';
 
 export interface Message {
   id: string;
@@ -13,11 +13,13 @@ export interface Message {
 export interface MessageListProps {
   messages: Message[];
   streamingMessageId: string | null;
+  onSelectPrompt: (prompt: string) => void;
 }
 
 export default function MessageList({
   messages,
   streamingMessageId,
+  onSelectPrompt,
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -26,27 +28,7 @@ export default function MessageList({
   }, [messages]);
 
   if (messages.length === 0) {
-    return (
-      <Box
-        data-testid="message-area"
-        sx={{
-          flex: 1,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          p: `${spacing.layout.xs}px`,
-        }}
-      >
-        <Typography
-          sx={{
-            ...typographyPresets.body.lg,
-            color: colorSemantics.text.secondary,
-          }}
-        >
-          Send a message to start a conversation
-        </Typography>
-      </Box>
-    );
+    return <WelcomePrompts onSelectPrompt={onSelectPrompt} />;
   }
 
   return (
@@ -55,10 +37,10 @@ export default function MessageList({
       sx={{
         flex: 1,
         overflow: 'auto',
-        py: `${spacing.component.md}px`,
+        py: `${spacing.layout.sm}px`,
         display: 'flex',
         flexDirection: 'column',
-        gap: `${spacing.chat.messageGroupGap}px`,
+        gap: `${spacing.gap.xl}px`,
       }}
     >
       {messages.map((msg) => (

@@ -14,13 +14,14 @@ describe('App', () => {
 
   it('shows login page when not authenticated', () => {
     render(<App />);
-    expect(screen.getByText('Sign in to continue')).toBeInTheDocument();
-    expect(screen.getByLabelText('Email *')).toBeInTheDocument();
-    expect(screen.getByLabelText('Password *')).toBeInTheDocument();
+    expect(screen.getByText('Welcome back')).toBeInTheDocument();
+    expect(screen.getByText('Sign in to Agentic Chat')).toBeInTheDocument();
+    expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
   });
 
-  it('shows Agentic Chat title on login page', () => {
+  it('shows continue button on login page', () => {
     render(<App />);
-    expect(screen.getByText('Agentic Chat')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /continue/i })).toBeInTheDocument();
   });
 });

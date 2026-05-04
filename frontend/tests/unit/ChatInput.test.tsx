@@ -4,10 +4,10 @@ import userEvent from '@testing-library/user-event';
 import ChatInput from '../../src/components/ChatInput';
 
 describe('ChatInput', () => {
-  it('renders text field and send button', () => {
+  it('renders textarea and send button', () => {
     render(<ChatInput onSend={vi.fn()} />);
 
-    expect(screen.getByPlaceholderText('Type a message...')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Message Agentic Chat...')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /send/i })).toBeInTheDocument();
   });
 
@@ -23,7 +23,7 @@ describe('ChatInput', () => {
 
     render(<ChatInput onSend={onSend} />);
 
-    const input = screen.getByPlaceholderText('Type a message...');
+    const input = screen.getByPlaceholderText('Message Agentic Chat...');
     await user.type(input, 'Hello world');
     await user.click(screen.getByRole('button', { name: /send/i }));
 
@@ -36,7 +36,7 @@ describe('ChatInput', () => {
 
     render(<ChatInput onSend={onSend} />);
 
-    const input = screen.getByPlaceholderText('Type a message...');
+    const input = screen.getByPlaceholderText('Message Agentic Chat...');
     await user.type(input, 'Hello world');
     await user.click(screen.getByRole('button', { name: /send/i }));
 

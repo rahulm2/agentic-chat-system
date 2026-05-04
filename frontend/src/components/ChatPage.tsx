@@ -4,6 +4,7 @@ import ChatInput from './ChatInput';
 import MessageList from './MessageList';
 import { useMessages, useStreamingStatus, useChatDispatch, useConversation } from '../context';
 import { useSSEStream } from '../hooks/useSSEStream';
+import { useLogout } from '../hooks/useAuth';
 import { colorSemantics } from '../design-system';
 
 export default function ChatPage() {
@@ -11,6 +12,7 @@ export default function ChatPage() {
   const { streamingMessageId, streamingStatus } = useStreamingStatus();
   const dispatch = useChatDispatch();
   const { currentConversationId } = useConversation();
+  const logoutMutation = useLogout();
 
   const { sendMessage, isPending } = useSSEStream({
     dispatch,
@@ -19,6 +21,14 @@ export default function ChatPage() {
 
   const handleSend = (message: string) => {
     sendMessage(message);
+  };
+
+  const handleLogout = () => {
+    logoutMutation.mutate();
+  };
+
+  const handleNewChat = () => {
+    dispatch({ type: 'CLEAR_CONVERSATION' });
   };
 
   const isStreaming = streamingStatus === 'streaming' || isPending;
@@ -32,10 +42,11 @@ export default function ChatPage() {
         backgroundColor: colorSemantics.background.subtle,
       }}
     >
-      <ChatHeader />
+      <ChatHeader onLogout={handleLogout} onNewChat={handleNewChat} />
       <MessageList
         messages={messages}
         streamingMessageId={streamingMessageId}
+        onSelectPrompt={handleSend}
       />
       <ChatInput onSend={handleSend} disabled={isStreaming} />
     </Box>

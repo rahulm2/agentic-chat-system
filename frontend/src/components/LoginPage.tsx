@@ -1,6 +1,5 @@
 import { useState, type FormEvent } from 'react';
 import Box from '@mui/material/Box';
-import Card from '@mui/material/Card';
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
@@ -11,6 +10,7 @@ import {
   spacing,
   typographyPresets,
   borderSemantics,
+  shadowSemantics,
 } from '../design-system';
 import { useLogin, useRegister } from '../hooks/useAuth';
 import { useSnackbar } from '../context/SnackbarProvider';
@@ -57,125 +57,152 @@ export default function LoginPage() {
     <Box
       sx={{
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         minHeight: '100vh',
-        backgroundColor: colorSemantics.background.subtle,
+        backgroundColor: colorSemantics.background.default,
         p: `${spacing.layout.xs}px`,
       }}
     >
-      <Card
+      {/* Logo */}
+      <Box
         sx={{
-          width: '100%',
-          maxWidth: 420,
-          p: `${spacing.component['2xl']}px`,
-          borderRadius: `${borderSemantics.radius.dialog}px`,
+          width: 56,
+          height: 56,
+          borderRadius: `${borderSemantics.radius.card}px`,
+          backgroundColor: colorSemantics.interactive.primary,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          mb: `${spacing.gap.xl}px`,
         }}
       >
         <Typography
-          component="h1"
           sx={{
-            ...typographyPresets.heading.lg,
-            color: colorSemantics.text.primary,
-            textAlign: 'center',
-            mb: `${spacing.gap.xs}px`,
+            ...typographyPresets.heading.xl,
+            color: colorSemantics.text.inverse,
           }}
         >
-          Agentic Chat
+          A
         </Typography>
-        <Typography
-          sx={{
-            ...typographyPresets.body.md,
-            color: colorSemantics.text.secondary,
-            textAlign: 'center',
-            mb: `${spacing.gap.xl}px`,
-          }}
-        >
-          {isRegisterMode ? 'Create an account' : 'Sign in to continue'}
-        </Typography>
+      </Box>
 
-        <Box
-          component="form"
-          onSubmit={handleSubmit}
+      <Typography
+        component="h1"
+        sx={{
+          ...typographyPresets.heading.lg,
+          color: colorSemantics.text.primary,
+          mb: `${spacing.gap.xs}px`,
+        }}
+      >
+        {isRegisterMode ? 'Create your account' : 'Welcome back'}
+      </Typography>
+      <Typography
+        sx={{
+          ...typographyPresets.body.md,
+          color: colorSemantics.text.secondary,
+          mb: `${spacing.gap['2xl']}px`,
+        }}
+      >
+        {isRegisterMode
+          ? 'Get started with Agentic Chat'
+          : 'Sign in to Agentic Chat'}
+      </Typography>
+
+      <Box
+        component="form"
+        onSubmit={handleSubmit}
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: `${spacing.gap.lg}px`,
+          width: '100%',
+          maxWidth: 380,
+          p: `${spacing.component['2xl']}px`,
+          borderRadius: `${borderSemantics.radius.dialog}px`,
+          border: `1px solid ${colorSemantics.border.default}`,
+          backgroundColor: colorSemantics.background.default,
+          boxShadow: shadowSemantics.card,
+        }}
+      >
+        {isRegisterMode && (
+          <TextField
+            label="Name"
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            fullWidth
+            size="small"
+            autoComplete="name"
+          />
+        )}
+        <TextField
+          label="Email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          fullWidth
+          required
+          size="small"
+          autoComplete="email"
+        />
+        <TextField
+          label="Password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          fullWidth
+          required
+          size="small"
+          autoComplete={isRegisterMode ? 'new-password' : 'current-password'}
+          inputProps={{ minLength: 6 }}
+        />
+        <Button
+          type="submit"
+          variant="contained"
+          fullWidth
+          disabled={isPending || !email.trim() || !password.trim()}
           sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: `${spacing.gap.lg}px`,
+            py: `${spacing.component.sm}px`,
+            borderRadius: `${borderSemantics.radius.button}px`,
+            ...typographyPresets.label.lg,
+            textTransform: 'none',
           }}
         >
-          {isRegisterMode && (
-            <TextField
-              label="Name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              fullWidth
-              size="small"
-              autoComplete="name"
-            />
+          {isPending ? (
+            <CircularProgress size={22} color="inherit" />
+          ) : isRegisterMode ? (
+            'Create Account'
+          ) : (
+            'Continue'
           )}
-          <TextField
-            label="Email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            fullWidth
-            required
-            size="small"
-            autoComplete="email"
-          />
-          <TextField
-            label="Password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            fullWidth
-            required
-            size="small"
-            autoComplete={isRegisterMode ? 'new-password' : 'current-password'}
-            inputProps={{ minLength: 6 }}
-          />
-          <Button
-            type="submit"
-            variant="contained"
-            fullWidth
-            disabled={isPending || !email.trim() || !password.trim()}
-            sx={{ py: `${spacing.component.xs}px` }}
-          >
-            {isPending ? (
-              <CircularProgress size={22} color="inherit" />
-            ) : isRegisterMode ? (
-              'Create Account'
-            ) : (
-              'Sign In'
-            )}
-          </Button>
-        </Box>
+        </Button>
+      </Box>
 
-        <Typography
+      <Typography
+        sx={{
+          ...typographyPresets.body.sm,
+          color: colorSemantics.text.secondary,
+          mt: `${spacing.gap.lg}px`,
+        }}
+      >
+        {isRegisterMode ? 'Already have an account? ' : "Don't have an account? "}
+        <Link
+          component="button"
+          type="button"
+          onClick={toggleMode}
+          underline="hover"
           sx={{
-            ...typographyPresets.body.sm,
-            color: colorSemantics.text.secondary,
-            textAlign: 'center',
-            mt: `${spacing.gap.lg}px`,
+            ...typographyPresets.label.md,
+            color: colorSemantics.interactive.primary,
+            cursor: 'pointer',
+            verticalAlign: 'baseline',
           }}
         >
-          {isRegisterMode ? 'Already have an account? ' : "Don't have an account? "}
-          <Link
-            component="button"
-            type="button"
-            onClick={toggleMode}
-            sx={{
-              ...typographyPresets.label.md,
-              color: colorSemantics.interactive.primary,
-              cursor: 'pointer',
-              verticalAlign: 'baseline',
-            }}
-          >
-            {isRegisterMode ? 'Sign In' : 'Register'}
-          </Link>
-        </Typography>
-      </Card>
+          {isRegisterMode ? 'Sign In' : 'Sign Up'}
+        </Link>
+      </Typography>
     </Box>
   );
 }

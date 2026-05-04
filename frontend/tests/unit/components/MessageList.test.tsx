@@ -1,23 +1,22 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import MessageList from '../../../src/components/MessageList';
 
 beforeAll(() => {
-  // jsdom does not implement scrollIntoView
   Element.prototype.scrollIntoView = () => {};
 });
 
-describe('MessageList', () => {
-  it('shows empty state text when no messages', () => {
-    render(<MessageList messages={[]} streamingMessageId={null} />);
+const noop = vi.fn();
 
-    expect(
-      screen.getByText('Send a message to start a conversation')
-    ).toBeInTheDocument();
+describe('MessageList', () => {
+  it('shows welcome prompts when no messages', () => {
+    render(<MessageList messages={[]} streamingMessageId={null} onSelectPrompt={noop} />);
+
+    expect(screen.getByText('How can I help you today?')).toBeInTheDocument();
   });
 
   it('renders message area with data-testid="message-area"', () => {
-    render(<MessageList messages={[]} streamingMessageId={null} />);
+    render(<MessageList messages={[]} streamingMessageId={null} onSelectPrompt={noop} />);
 
     expect(screen.getByTestId('message-area')).toBeInTheDocument();
   });
@@ -29,7 +28,7 @@ describe('MessageList', () => {
       { id: 'msg-3', role: 'user' as const, content: 'Third message' },
     ];
 
-    render(<MessageList messages={messages} streamingMessageId={null} />);
+    render(<MessageList messages={messages} streamingMessageId={null} onSelectPrompt={noop} />);
 
     expect(screen.getByText('First message')).toBeInTheDocument();
     expect(screen.getByText('Second message')).toBeInTheDocument();
@@ -42,7 +41,7 @@ describe('MessageList', () => {
       { id: 'msg-2', role: 'assistant' as const, content: 'Assistant replies' },
     ];
 
-    render(<MessageList messages={messages} streamingMessageId={null} />);
+    render(<MessageList messages={messages} streamingMessageId={null} onSelectPrompt={noop} />);
 
     expect(screen.getByText('User says hello')).toBeInTheDocument();
     expect(screen.getByText('Assistant replies')).toBeInTheDocument();
