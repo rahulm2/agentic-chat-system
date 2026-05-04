@@ -224,6 +224,32 @@ Every feature follows Test-Driven Development. Each GitHub issue has test cases 
 - React.memo for list item components (MessageBubble)
 - Components that only dispatch use `useChatDispatch()` only
 
+## Backend Guidelines — Design Patterns, SOLID & DRY
+
+### DRY (Don't Repeat Yourself)
+- **No duplicated logic.** If two modules share behavior (e.g., HTTP fetch with retry, error mapping), extract a shared utility. Example: `fetchWithRetry` in `agent/tools/fetch-with-retry.ts` is used by both RxNorm and openFDA tools.
+- **Centralize constants.** Never hardcode URLs, timeouts, retry counts, or magic numbers in module files. Put them in a dedicated constants file (e.g., `agent/tools/constants.ts`). Reference the constants everywhere.
+
+### SOLID Principles
+- **Single Responsibility**: Each file/class has one reason to change. Controllers handle HTTP, services handle business logic, repositories handle data access, tools handle external API calls.
+- **Open/Closed**: Use typed registries and interfaces to add new tools/modules without modifying existing dispatch logic. Example: `ToolRegistry` in `executor.ts` — add a new tool by adding an entry, not by changing the executor.
+- **Liskov Substitution**: Error subclasses (`ToolError`, `ToolNotFoundError`, `ToolTimeoutError`, etc.) must be usable wherever `AppError` is expected.
+- **Interface Segregation**: Keep interfaces focused. `ToolDefinition<TArgs, TResult>` is typed per tool, not a generic `Record<string, unknown>`.
+- **Dependency Inversion**: Modules depend on abstractions (interfaces/types), not concrete implementations. Services receive repositories via constructor injection. The composition root (`container.ts`) wires everything.
+
+### Error Handling
+- **Use typed error classes**, never raw `throw new Error(...)` for business/domain errors. The error hierarchy:
+  - `AppError` → base class with `code: ErrorCode` and `status: number`
+  - `ToolError` → base for all tool errors (adds `toolName`)
+  - `ToolNotFoundError`, `ToolTimeoutError`, `ToolRateLimitError`, `ToolApiError` → specific tool failures
+- **Catch with `instanceof`**, never string comparison on `error.name` or `error.message`.
+- **Errors must be serializable** via `toJSON()` for consistent API responses.
+
+### Type Safety
+- **Prefer strict types over `Record<string, unknown>`** or `any`. Use typed registries, discriminated unions, and generics.
+- **Use type guards** (e.g., `isRegisteredTool()`) instead of unchecked casts.
+- **Barrel exports** (`index.ts`) must export all public types alongside runtime values.
+
 ## Frontend Design System (`frontend/src/design-system/`)
 
 ### Token → Theme flow

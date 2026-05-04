@@ -1,6 +1,6 @@
 import { ToolError } from "@/common/errors.ts";
-import { rxnormLookup } from "./rxnorm.ts";
-import { openfdaAdverseEvents } from "./openfda.ts";
+import { rxnormLookup, type RxNormResult } from "./rxnorm.ts";
+import { openfdaAdverseEvents, type AdverseEventResult } from "./openfda.ts";
 
 export interface ToolResult {
   result: unknown;
@@ -8,26 +8,39 @@ export interface ToolResult {
   durationMs: number;
 }
 
-type ToolHandler = (args: Record<string, unknown>) => Promise<unknown>;
+interface ToolDefinition<TArgs, TResult> {
+  handler: (args: TArgs) => Promise<TResult>;
+}
 
-const toolHandlers: Record<string, ToolHandler> = {
-  rxnorm_lookup: (args) => rxnormLookup(args as { drugName: string }),
-  openfda_adverse_events: (args) =>
-    openfdaAdverseEvents(args as { rxcui: string; limit?: number }),
+interface ToolRegistry {
+  rxnorm_lookup: ToolDefinition<{ drugName: string }, RxNormResult>;
+  openfda_adverse_events: ToolDefinition<{ rxcui: string; limit?: number }, AdverseEventResult>;
+}
+
+export type ToolName = keyof ToolRegistry;
+
+const toolRegistry: ToolRegistry = {
+  rxnorm_lookup: { handler: rxnormLookup },
+  openfda_adverse_events: { handler: openfdaAdverseEvents },
 };
+
+function isRegisteredTool(name: string): name is ToolName {
+  return name in toolRegistry;
+}
 
 export async function executeTool(
   toolName: string,
   args: Record<string, unknown>,
 ): Promise<ToolResult> {
-  const handler = toolHandlers[toolName];
-  if (!handler) {
+  if (!isRegisteredTool(toolName)) {
     throw new ToolError(`Unknown tool: ${toolName}`, toolName);
   }
 
+  const { handler } = toolRegistry[toolName];
   const start = performance.now();
+
   try {
-    const result = await handler(args);
+    const result = await handler(args as never);
     return {
       result,
       isError: false,

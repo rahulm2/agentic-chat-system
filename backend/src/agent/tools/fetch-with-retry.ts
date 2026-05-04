@@ -1,4 +1,9 @@
-import { ToolTimeoutError, ToolApiError } from "@/common/errors.ts";
+import {
+  ToolTimeoutError,
+  ToolApiError,
+  ToolRateLimitError,
+  ToolError,
+} from "@/common/errors.ts";
 import { TOOL_CONSTANTS } from "./constants.ts";
 
 export interface FetchWithRetryOptions {
@@ -33,14 +38,12 @@ export async function fetchWithRetry(
         continue;
       }
       if (res.status === 429) {
-        const { ToolRateLimitError } = await import("@/common/errors.ts");
         throw new ToolRateLimitError(toolName);
       }
       throw new ToolApiError(toolName, res.status, res.statusText);
     } catch (err) {
-      if (err instanceof ToolApiError || (err as Error).name === "ToolRateLimitError") {
-        throw err;
-      }
+      if (err instanceof ToolError) throw err;
+
       if (attempt < maxRetries && (err as Error).name === "AbortError") {
         await backoff(attempt);
         continue;
