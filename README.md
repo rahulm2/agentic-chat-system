@@ -1,5 +1,11 @@
 # Agentic Chat System
 
+## Demo Recording
+
+[Watch the walkthrough on Google Drive](https://drive.google.com/file/d/17Oy903O7W54et41L5bNOGCaCt532HuHA/view?usp=sharing)
+
+---
+
 A full-stack agentic chat system for the healthcare domain. A streaming Bun + Hono backend runs a multi-step AI agent that calls real healthcare APIs (RxNorm, openFDA), persists every conversation turn, and streams typed SSE events to a React UI that renders tokens, tool calls, and reasoning in real time. Voice input (Web Speech API) and voice output (OpenAI TTS) complete the loop.
 
 ---
