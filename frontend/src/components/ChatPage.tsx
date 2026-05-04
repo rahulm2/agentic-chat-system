@@ -5,13 +5,15 @@ import MessageList from './MessageList';
 import { useMessages, useStreamingStatus, useChatDispatch, useConversation } from '../context';
 import { useSSEStream } from '../hooks/useSSEStream';
 import { useLogout } from '../hooks/useAuth';
+import { useMutation } from '@tanstack/react-query';
+import { deleteMessage } from '../api/conversations';
 import { colorSemantics } from '../design-system';
 
 export default function ChatPage() {
   const messages = useMessages();
   const { streamingMessageId, streamingStatus } = useStreamingStatus();
   const dispatch = useChatDispatch();
-  const { currentConversationId } = useConversation();
+  const { currentConversationId, metadata } = useConversation();
   const logoutMutation = useLogout();
 
   const { sendMessage, isPending } = useSSEStream({
@@ -31,6 +33,17 @@ export default function ChatPage() {
     dispatch({ type: 'CLEAR_CONVERSATION' });
   };
 
+  const deleteMutation = useMutation({
+    mutationFn: (messageId: string) => deleteMessage(messageId),
+  });
+
+  const handleDeleteMessage = (messageId: string) => {
+    // Optimistically remove from local state immediately
+    dispatch({ type: 'DELETE_MESSAGE', payload: { messageId } });
+    // Fire-and-forget API call (local IDs like `user-{ts}` will 404 silently)
+    deleteMutation.mutate(messageId);
+  };
+
   const isStreaming = streamingStatus === 'streaming' || isPending;
 
   return (
@@ -47,6 +60,9 @@ export default function ChatPage() {
         messages={messages}
         streamingMessageId={streamingMessageId}
         onSelectPrompt={handleSend}
+        metadata={metadata}
+        onDeleteMessage={handleDeleteMessage}
+        isPending={isPending}
       />
       <ChatInput onSend={handleSend} disabled={isStreaming} />
     </Box>

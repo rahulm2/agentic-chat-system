@@ -21,7 +21,7 @@ export interface ChatMessage {
   content: string;
   reasoning?: string;
   toolCalls?: ToolCall[];
-  createdAt: string;
+  createdAt?: string;
 }
 
 // Metadata from the AI response
@@ -70,4 +70,5 @@ export type ChatAction =
   | { type: 'STREAM_DONE' }
   | { type: 'SET_MESSAGES'; payload: ChatMessage[] }
   | { type: 'SET_CONVERSATION'; payload: { conversationId: string; messages: ChatMessage[] } }
+  | { type: 'DELETE_MESSAGE'; payload: { messageId: string } }
   | { type: 'CLEAR_CONVERSATION' };

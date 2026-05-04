@@ -68,3 +68,12 @@ export async function deleteConversation(id: string): Promise<void> {
     throw new Error(`Failed to delete conversation: ${response.status}`);
   }
 }
+
+export async function deleteMessage(id: string): Promise<void> {
+  const response = await apiFetch(`/api/messages/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to delete message: ${response.status}`);
+  }
+}

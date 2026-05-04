@@ -43,6 +43,14 @@ export class AgentRunner {
     private config: AgentConfig,
   ) {}
 
+  private static readonly SYSTEM_PROMPT: ChatCompletionMessageParam = {
+    role: "system",
+    content:
+      "You are a helpful healthcare assistant. " +
+      "Only call the rxnorm_lookup or openfda_adverse_events tools when the user explicitly asks about a specific medication, drug interactions, dosages, or adverse effects. " +
+      "For greetings, general questions, follow-ups, or any non-medication topic, respond conversationally without calling any tools.",
+  };
+
   async run(
     messages: ChatCompletionMessageParam[],
     writer: SSEWriter,
@@ -163,7 +171,7 @@ export class AgentRunner {
     const stream = await this.openai.chat.completions.create(
       {
         model: this.config.model,
-        messages,
+        messages: [AgentRunner.SYSTEM_PROMPT, ...messages],
         tools: toolDefinitions,
         stream: true,
         stream_options: { include_usage: true },
