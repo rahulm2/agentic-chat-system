@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { login, register, fetchCurrentUser } from '../api/auth';
 import type { LoginParams, RegisterParams, AuthResponse } from '../api/auth';
-import { setAuthToken } from '../api/client';
+import { setAuthToken, getAuthToken } from '../api/client';
 
 export const authKeys = {
   user: ['auth', 'user'] as const,
@@ -12,7 +12,12 @@ export function useCurrentUser() {
     queryKey: authKeys.user,
     queryFn: fetchCurrentUser,
     retry: false,
+    enabled: !!getAuthToken(),
   });
+}
+
+export function useIsAuthenticated(): boolean {
+  return !!getAuthToken();
 }
 
 export function useLogin() {

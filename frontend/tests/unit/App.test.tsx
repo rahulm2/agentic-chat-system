@@ -1,18 +1,26 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import App from '../../src/App';
 
 describe('App', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
   it('renders without crashing', () => {
     const { container } = render(<App />);
     expect(container.firstChild).toBeTruthy();
   });
 
-  it('wraps in MUI ThemeProvider and renders ChatPage with provider', () => {
+  it('shows login page when not authenticated', () => {
     render(<App />);
-    // App renders ThemeProvider > ChatProvider > ChatPage
-    // ChatPage renders ChatHeader with title, MessageList with message-area, and ChatInput
+    expect(screen.getByText('Sign in to continue')).toBeInTheDocument();
+    expect(screen.getByLabelText('Email *')).toBeInTheDocument();
+    expect(screen.getByLabelText('Password *')).toBeInTheDocument();
+  });
+
+  it('shows Agentic Chat title on login page', () => {
+    render(<App />);
     expect(screen.getByText('Agentic Chat')).toBeInTheDocument();
-    expect(screen.getByTestId('message-area')).toBeInTheDocument();
   });
 });

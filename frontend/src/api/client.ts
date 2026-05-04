@@ -1,26 +1,38 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+const TOKEN_KEY = 'auth_token';
 
 interface FetchOptions extends RequestInit {
   skipAuth?: boolean;
 }
 
-let authToken: string | null = null;
+type ErrorListener = (status: number, message: string) => void;
+
+let errorListener: ErrorListener | null = null;
+
+export function setApiErrorListener(listener: ErrorListener | null): void {
+  errorListener = listener;
+}
 
 export function setAuthToken(token: string | null): void {
-  authToken = token;
+  if (token) {
+    localStorage.setItem(TOKEN_KEY, token);
+  } else {
+    localStorage.removeItem(TOKEN_KEY);
+  }
 }
 
 export function getAuthToken(): string | null {
-  return authToken;
+  return localStorage.getItem(TOKEN_KEY);
 }
 
 export async function apiFetch(path: string, options: FetchOptions = {}): Promise<Response> {
   const { skipAuth = false, headers: customHeaders, ...rest } = options;
 
   const headers = new Headers(customHeaders);
+  const token = getAuthToken();
 
-  if (!skipAuth && authToken) {
-    headers.set('Authorization', `Bearer ${authToken}`);
+  if (!skipAuth && token) {
+    headers.set('Authorization', `Bearer ${token}`);
   }
 
   if (!headers.has('Content-Type') && rest.body && typeof rest.body === 'string') {
@@ -31,6 +43,13 @@ export async function apiFetch(path: string, options: FetchOptions = {}): Promis
     ...rest,
     headers,
   });
+
+  if (!response.ok && errorListener) {
+    if (response.status === 401 && !skipAuth) {
+      setAuthToken(null);
+      errorListener(401, 'Session expired. Please log in again.');
+    }
+  }
 
   return response;
 }

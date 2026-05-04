@@ -1,4 +1,4 @@
-export { apiFetch, setAuthToken, getAuthToken } from './client';
+export { apiFetch, setAuthToken, getAuthToken, setApiErrorListener } from './client';
 export { queryClient } from './query-client';
 export { sendChatMessage } from './chat';
 export type { SendMessageParams } from './chat';
