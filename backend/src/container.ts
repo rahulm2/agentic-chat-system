@@ -1,0 +1,55 @@
+import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import pg from "pg";
+import { AuthRepository } from "@/modules/auth/auth.repository.ts";
+import { AuthService } from "@/modules/auth/auth.service.ts";
+import { AuthController } from "@/modules/auth/auth.controller.ts";
+import { ConversationRepository } from "@/modules/conversation/conversation.repository.ts";
+import { ConversationService } from "@/modules/conversation/conversation.service.ts";
+import { ConversationController } from "@/modules/conversation/conversation.controller.ts";
+import { MessageRepository } from "@/modules/message/message.repository.ts";
+import { MessageService } from "@/modules/message/message.service.ts";
+import { MessageController } from "@/modules/message/message.controller.ts";
+import { authGuard } from "@/middleware/auth-guard.ts";
+
+export function createContainer(env: {
+  DATABASE_URL: string;
+  JWT_SECRET: string;
+}) {
+  const pool = new pg.Pool({ connectionString: env.DATABASE_URL });
+  const adapter = new PrismaPg(pool);
+  const prisma = new PrismaClient({ adapter });
+
+  // Repositories
+  const authRepository = new AuthRepository(prisma);
+  const conversationRepository = new ConversationRepository(prisma);
+  const messageRepository = new MessageRepository(prisma);
+
+  // Services
+  const authService = new AuthService(authRepository, env.JWT_SECRET);
+  const conversationService = new ConversationService(conversationRepository);
+  const messageService = new MessageService(messageRepository);
+
+  // Controllers
+  const authController = new AuthController(authService);
+  const conversationController = new ConversationController(conversationService);
+  const messageController = new MessageController(messageService);
+
+  // Middleware
+  const guard = authGuard(env.JWT_SECRET);
+
+  return {
+    prisma,
+    pool,
+    guard,
+    authController,
+    conversationController,
+    messageController,
+    // Expose services for use by other modules (e.g., chat endpoint)
+    authService,
+    conversationService,
+    messageService,
+    messageRepository,
+    conversationRepository,
+  };
+}
