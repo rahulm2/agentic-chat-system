@@ -80,8 +80,15 @@ agentic-chat-system/
 | Repository | Data access, query building | Prisma client | Business logic, HTTP |
 | Agent | LLM interaction, tool execution | Tools, OpenAI SDK | HTTP context, Prisma |
 
+### Decorator-Based Routing: `@asla/hono-decorator`
+Controllers use TC39 Stage 3 decorators via `@asla/hono-decorator`:
+- `@Controller({ basePath: '/api' })` on classes
+- `@Get('/')`, `@Post('/')`, `@Delete('/:id')`, etc. on methods
+- `@Use(middleware)` on classes or methods
+- `applyController(app, new XController(...))` in `app.ts`
+
 ### DI Pattern: Composition Root
-All dependencies wired explicitly in `backend/src/container.ts`. No DI framework, no decorators, no reflect-metadata. For testing, swap any dependency with a mock.
+All dependencies wired explicitly in `backend/src/container.ts`. Controllers receive services via constructor injection, wired manually in `container.ts`. No DI framework, no reflect-metadata. For testing, swap any dependency with a mock.
 
 ### Frontend State: constate Context Splitting
 ```

@@ -14,10 +14,11 @@ Handles all backend development tasks for the Agentic Chat System.
 ## Context
 - Runtime: Bun
 - Framework: Hono with streamSSE()
+- Decorators: `@asla/hono-decorator` for NestJS-like routing (`@Controller`, `@Get`, `@Post`, `@Delete`, `@Use`)
 - ORM: Prisma (PostgreSQL)
 - AI: OpenAI SDK direct (no Vercel AI SDK)
-- Architecture: Module -> Controller -> Service -> Repository
-- DI: Composition root pattern (container.ts)
+- Architecture: Module -> Controller (decorator-based) -> Service -> Repository
+- DI: Composition root pattern (container.ts) — controllers receive services via constructor, wired manually
 - Auth: JWT via hono/jwt, passwords via Bun.password.hash/verify
 
 ## Key Files
