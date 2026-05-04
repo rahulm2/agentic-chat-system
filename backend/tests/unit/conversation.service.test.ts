@@ -1,6 +1,16 @@
 import { describe, it, expect, beforeEach } from "bun:test";
 import { ConversationService } from "@/modules/conversation/conversation.service.ts";
 import type { ConversationRepository } from "@/modules/conversation/conversation.repository.ts";
+import type { MessageService } from "@/modules/message/message.service.ts";
+import type { ConversationServiceConfig } from "@/modules/conversation/conversation.service.ts";
+
+const mockMessageService = {} as MessageService;
+const mockConfig: ConversationServiceConfig = {
+  openaiApiKey: "test-key",
+  model: "gpt-4o",
+  maxSteps: 6,
+  timeoutMs: 30000,
+};
 
 function createMockRepo(
   overrides: Partial<ConversationRepository> = {},
@@ -20,11 +30,15 @@ function createMockRepo(
   } as ConversationRepository;
 }
 
+function createService(repo: ConversationRepository): ConversationService {
+  return new ConversationService(repo, mockMessageService, mockConfig);
+}
+
 describe("ConversationService", () => {
   let service: ConversationService;
 
   beforeEach(() => {
-    service = new ConversationService(createMockRepo());
+    service = createService(createMockRepo());
   });
 
   it("lists conversations for user", async () => {
@@ -38,11 +52,9 @@ describe("ConversationService", () => {
         _count: { messages: 3 },
       },
     ];
-    service = new ConversationService(
-      createMockRepo({
-        findByUserId: async () => ({ conversations: mockConvs as never, total: 1 }),
-      }),
-    );
+    service = createService(createMockRepo({
+      findByUserId: async () => ({ conversations: mockConvs as never, total: 1 }),
+    }));
 
     const result = await service.list("user-1", 20, 0);
     expect(result.conversations).toHaveLength(1);
@@ -58,9 +70,9 @@ describe("ConversationService", () => {
       updatedAt: new Date(),
       messages: [{ id: "msg-1", content: "Hello", orderIndex: 0, toolCalls: [] }],
     };
-    service = new ConversationService(
-      createMockRepo({ findById: async () => conv as never }),
-    );
+    service = createService(createMockRepo({
+      findById: async () => conv as never,
+    }));
 
     const result = await service.getById("conv-1", "user-1");
     expect(result.id).toBe("conv-1");
@@ -75,22 +87,20 @@ describe("ConversationService", () => {
 
   it("deletes conversation", async () => {
     let deleted = false;
-    service = new ConversationService(
-      createMockRepo({
-        findById: async () =>
-          ({
-            id: "conv-1",
-            userId: "user-1",
-            title: "Test",
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            messages: [],
-          }) as never,
-        delete: async () => {
-          deleted = true;
-        },
-      }),
-    );
+    service = createService(createMockRepo({
+      findById: async () =>
+        ({
+          id: "conv-1",
+          userId: "user-1",
+          title: "Test",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          messages: [],
+        }) as never,
+      delete: async () => {
+        deleted = true;
+      },
+    }));
 
     await service.delete("conv-1", "user-1");
     expect(deleted).toBe(true);
@@ -103,19 +113,17 @@ describe("ConversationService", () => {
   });
 
   it("throws FORBIDDEN for wrong user", async () => {
-    service = new ConversationService(
-      createMockRepo({
-        findById: async () =>
-          ({
-            id: "conv-1",
-            userId: "other-user",
-            title: "Test",
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            messages: [],
-          }) as never,
-      }),
-    );
+    service = createService(createMockRepo({
+      findById: async () =>
+        ({
+          id: "conv-1",
+          userId: "other-user",
+          title: "Test",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          messages: [],
+        }) as never,
+    }));
 
     await expect(service.getById("conv-1", "user-1")).rejects.toThrow(
       "Access denied",
