@@ -1,6 +1,7 @@
 import Box from '@mui/material/Box';
 import ChatHeader from './ChatHeader';
 import ChatInput from './ChatInput';
+import { colorSemantics, spacing } from '../design-system';
 
 export default function ChatPage() {
   const handleSend = (_message: string) => {
@@ -8,9 +9,23 @@ export default function ChatPage() {
   };
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100vh',
+        backgroundColor: colorSemantics.background.subtle,
+      }}
+    >
       <ChatHeader />
-      <Box data-testid="message-area" sx={{ flex: 1, overflow: 'auto', p: 2 }} />
+      <Box
+        data-testid="message-area"
+        sx={{
+          flex: 1,
+          overflow: 'auto',
+          p: `${spacing.layout.xs}px`,
+        }}
+      />
       <ChatInput onSend={handleSend} />
     </Box>
   );

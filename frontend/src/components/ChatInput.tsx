@@ -3,6 +3,7 @@ import Box from '@mui/material/Box';
 import TextField from '@mui/material/TextField';
 import IconButton from '@mui/material/IconButton';
 import SendIcon from '@mui/icons-material/Send';
+import { colorSemantics, spacing, borderSemantics } from '../design-system';
 
 interface ChatInputProps {
   onSend: (message: string) => void;
@@ -20,15 +21,36 @@ export default function ChatInput({ onSend }: ChatInputProps) {
   };
 
   return (
-    <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', gap: 1, p: 2 }}>
+    <Box
+      component="form"
+      onSubmit={handleSubmit}
+      sx={{
+        display: 'flex',
+        gap: `${spacing.gap.sm}px`,
+        p: `${spacing.chat.inputPadding}px`,
+        borderTop: `1px solid ${colorSemantics.border.default}`,
+        backgroundColor: colorSemantics.background.paper,
+      }}
+    >
       <TextField
         fullWidth
         size="small"
         placeholder="Type a message..."
         value={value}
         onChange={(e) => setValue(e.target.value)}
+        sx={{
+          '& .MuiOutlinedInput-root': {
+            borderRadius: `${borderSemantics.radius.input}px`,
+          },
+        }}
       />
-      <IconButton type="submit" color="primary" aria-label="Send" disabled={value.trim().length === 0}>
+      <IconButton
+        type="submit"
+        color="primary"
+        aria-label="Send"
+        disabled={value.trim().length === 0}
+        sx={{ borderRadius: `${borderSemantics.radius.button}px` }}
+      >
         <SendIcon />
       </IconButton>
     </Box>

@@ -224,6 +224,63 @@ Every feature follows Test-Driven Development. Each GitHub issue has test cases 
 - React.memo for list item components (MessageBubble)
 - Components that only dispatch use `useChatDispatch()` only
 
+## Frontend Design System (`frontend/src/design-system/`)
+
+### Token → Theme flow
+```
+src/design-system/tokens/colors.ts        → colorPrimitives + colorSemantics
+src/design-system/tokens/typography.ts    → fontFamily, fontSize, fontWeight, typographyPresets
+src/design-system/tokens/spacing.ts       → spacingScale + spacing (component/gap/layout/chat)
+src/design-system/tokens/borders.ts       → borderWidth, borderRadius, borderSemantics
+src/design-system/tokens/shadows.ts       → shadows + shadowSemantics
+src/design-system/theme/create-theme.ts   → MUI theme factory using all tokens
+src/design-system/index.ts               → barrel export for everything
+```
+
+### Rules — ALWAYS follow
+1. **NEVER use hardcoded hex/rgba values** in components. Always use semantic tokens.
+2. **NEVER use `colorPrimitives` directly** in components — use `colorSemantics` instead.
+3. **Use `typographyPresets.*`** for text styles, not raw `fontSize`/`fontWeight` values.
+4. **Use `borderSemantics.radius.*`** for border-radius, never hardcoded pixel values.
+5. **Use `shadowSemantics.*`** for `boxShadow`, never hardcoded shadow strings.
+6. **Use `spacing.*` tokens** for padding/margin/gap, not raw numbers or MUI theme.spacing().
+7. **Update tests** when adding/changing design tokens. Token tests live in `tests/unit/design-system/`.
+
+### Token selection guide
+| Use case | Token |
+|---|---|
+| Main text | `colorSemantics.text.primary` |
+| Supporting text | `colorSemantics.text.secondary` |
+| Text on dark bg | `colorSemantics.text.inverse` |
+| Page/card bg | `colorSemantics.background.default` |
+| Subtle section bg | `colorSemantics.background.subtle` |
+| Standard border | `colorSemantics.border.default` |
+| Focus ring | `colorSemantics.border.focus` |
+| Primary CTA | `colorSemantics.interactive.primary` |
+| Success state | `colorSemantics.status.success.main` / `.lightest` |
+| Error state | `colorSemantics.status.error.main` / `.lightest` |
+| AI message bg | `colorSemantics.ai.messageBg` |
+| Tool call bg | `colorSemantics.ai.toolBg` |
+| Reasoning panel bg | `colorSemantics.ai.reasoningBg` |
+| Button radius | `borderSemantics.radius.button` (12px) |
+| Input radius | `borderSemantics.radius.input` (8px) |
+| Card radius | `borderSemantics.radius.card` (12px) |
+| Card shadow | `shadowSemantics.card` |
+| Modal shadow | `shadowSemantics.modal` |
+| Focus shadow | `shadowSemantics.inputFocus` |
+
+### Theme factory
+```ts
+import { createTheme } from './design-system';
+const theme = createTheme({ paletteMode: 'light' }); // or 'dark'
+```
+
+### Test requirements
+Every new token or token group MUST have a corresponding test in `tests/unit/design-system/`.
+- Verify semantic tokens reference correct primitive values
+- Verify scale ordering (sizes increase, weights are correct numbers)
+- Verify theme palette maps to semantic tokens correctly
+
 ## GitHub Issues Backlog (30 issues, dependency order)
 **Infrastructure**: #1 Backend skeleton → #2 Frontend skeleton → #3 DB schema → #4 Testing framework
 **Backend**: #5 Auth → #6 Conversations → #7 Messages → #8 Healthcare tools → #9 Agentic loop → #10 Chat endpoint → #11 Usage tracking → #12 DI container
