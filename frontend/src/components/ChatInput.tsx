@@ -7,9 +7,10 @@ import { colorSemantics, spacing, borderSemantics } from '../design-system';
 
 interface ChatInputProps {
   onSend: (message: string) => void;
+  disabled?: boolean;
 }
 
-export default function ChatInput({ onSend }: ChatInputProps) {
+export default function ChatInput({ onSend, disabled = false }: ChatInputProps) {
   const [value, setValue] = useState('');
 
   const handleSubmit = (e: FormEvent) => {
@@ -38,6 +39,7 @@ export default function ChatInput({ onSend }: ChatInputProps) {
         placeholder="Type a message..."
         value={value}
         onChange={(e) => setValue(e.target.value)}
+        disabled={disabled}
         sx={{
           '& .MuiOutlinedInput-root': {
             borderRadius: `${borderSemantics.radius.input}px`,
@@ -48,7 +50,7 @@ export default function ChatInput({ onSend }: ChatInputProps) {
         type="submit"
         color="primary"
         aria-label="Send"
-        disabled={value.trim().length === 0}
+        disabled={disabled || value.trim().length === 0}
         sx={{ borderRadius: `${borderSemantics.radius.button}px` }}
       >
         <SendIcon />

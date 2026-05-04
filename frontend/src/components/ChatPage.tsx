@@ -1,12 +1,27 @@
 import Box from '@mui/material/Box';
 import ChatHeader from './ChatHeader';
 import ChatInput from './ChatInput';
-import { colorSemantics, spacing } from '../design-system';
+import MessageList from './MessageList';
+import { useMessages, useStreamingStatus, useChatDispatch, useConversation } from '../context';
+import { useSSEStream } from '../hooks/useSSEStream';
+import { colorSemantics } from '../design-system';
 
 export default function ChatPage() {
-  const handleSend = (_message: string) => {
-    // Will be wired to SSE client in a later issue
+  const messages = useMessages();
+  const { streamingMessageId, streamingStatus } = useStreamingStatus();
+  const dispatch = useChatDispatch();
+  const { currentConversationId } = useConversation();
+
+  const { sendMessage } = useSSEStream({
+    dispatch,
+    conversationId: currentConversationId,
+  });
+
+  const handleSend = (message: string) => {
+    sendMessage(message);
   };
+
+  const isStreaming = streamingStatus === 'streaming';
 
   return (
     <Box
@@ -18,15 +33,11 @@ export default function ChatPage() {
       }}
     >
       <ChatHeader />
-      <Box
-        data-testid="message-area"
-        sx={{
-          flex: 1,
-          overflow: 'auto',
-          p: `${spacing.layout.xs}px`,
-        }}
+      <MessageList
+        messages={messages}
+        streamingMessageId={streamingMessageId}
       />
-      <ChatInput onSend={handleSend} />
+      <ChatInput onSend={handleSend} disabled={isStreaming} />
     </Box>
   );
 }
