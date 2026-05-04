@@ -44,6 +44,7 @@ export function useSpeechToText({ onTranscript, onInterim, lang = 'en-US' }: Use
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const finalTranscriptRef = useRef('');
+  const submittedRef = useRef(false);
 
   const clearSilenceTimer = useCallback(() => {
     if (silenceTimerRef.current) {
@@ -71,8 +72,10 @@ export function useSpeechToText({ onTranscript, onInterim, lang = 'en-US' }: Use
     recognition.lang = lang;
 
     finalTranscriptRef.current = '';
+    submittedRef.current = false;
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
+      if (submittedRef.current) return;
       let interim = '';
       let final = '';
 
@@ -95,8 +98,10 @@ export function useSpeechToText({ onTranscript, onInterim, lang = 'en-US' }: Use
       // Reset silence timer on any speech activity
       clearSilenceTimer();
       silenceTimerRef.current = setTimeout(() => {
+        if (submittedRef.current) return;
         const transcript = finalTranscriptRef.current.trim();
         if (transcript) {
+          submittedRef.current = true;
           onTranscript(transcript);
         }
         stop();
