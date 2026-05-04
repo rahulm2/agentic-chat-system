@@ -27,8 +27,18 @@ export function createContainer(env: {
 
   // Services
   const authService = new AuthService(authRepository, env.JWT_SECRET);
-  const conversationService = new ConversationService(conversationRepository);
   const messageService = new MessageService(messageRepository);
+  const conversationService = new ConversationService(
+    conversationRepository,
+    messageService,
+    {
+      openaiApiKey: process.env.OPENAI_API_KEY ?? "",
+      model: process.env.AI_MODEL ?? "gpt-4o",
+      maxSteps: Number(process.env.MAX_AGENT_STEPS ?? 6),
+      timeoutMs: Number(process.env.AI_TIMEOUT_MS ?? 30000),
+      openfdaApiKey: process.env.OPENFDA_API_KEY,
+    },
+  );
 
   // Controllers
   const authController = new AuthController(authService);
@@ -45,7 +55,7 @@ export function createContainer(env: {
     authController,
     conversationController,
     messageController,
-    // Expose services for use by other modules (e.g., chat endpoint)
+    // Expose services for use by other modules
     authService,
     conversationService,
     messageService,

@@ -1,7 +1,9 @@
 import type { Context } from "hono";
-import { Controller, Get, Delete } from "@asla/hono-decorator";
+import { streamSSE } from "hono/streaming";
+import { Controller, Get, Post, Delete } from "@asla/hono-decorator";
+import type { SSEWriter } from "@/common/types.ts";
 import type { ConversationService } from "./conversation.service.ts";
-import { listConversationsSchema } from "./conversation.schema.ts";
+import { listConversationsSchema, chatRequestSchema } from "./conversation.schema.ts";
 
 @Controller({ basePath: "/api/conversations" })
 export class ConversationController {
@@ -21,6 +23,29 @@ export class ConversationController {
     const id = c.req.param("id")!;
     const conversation = await this.service.getById(id, user.sub);
     return c.json(conversation);
+  }
+
+  @Post("/completions")
+  async completions(c: Context) {
+    const body = await c.req.json();
+    const request = chatRequestSchema.parse(body);
+    const user = c.get("user" as never) as { sub: string };
+
+    return streamSSE(c, async (stream) => {
+      const writer: SSEWriter = {
+        async writeSSE(event: string, data: unknown) {
+          await stream.writeSSE({
+            event,
+            data: JSON.stringify(data),
+          });
+        },
+        close() {
+          stream.abort();
+        },
+      };
+
+      await this.service.handleChat(user.sub, request, writer);
+    });
   }
 
   @Delete("/:id")
