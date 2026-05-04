@@ -1,17 +1,27 @@
-import { describe, it, expect } from 'vitest';
-import { render } from '@testing-library/react';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { render, screen } from '@testing-library/react';
 import App from '../../src/App';
 
 describe('App', () => {
-  it('renders without crashing', () => {
-    render(<App />);
-    expect(document.getElementById('root') || document.body).toBeTruthy();
+  beforeEach(() => {
+    localStorage.clear();
   });
 
-  it('wraps in MUI ThemeProvider', () => {
+  it('renders without crashing', () => {
     const { container } = render(<App />);
-    // MUI ThemeProvider injects CSS baseline and theme styles
-    // Verify that the app renders with MUI components (ChatPage contains MUI elements)
     expect(container.firstChild).toBeTruthy();
+  });
+
+  it('shows login page when not authenticated', () => {
+    render(<App />);
+    expect(screen.getByText('Welcome back')).toBeInTheDocument();
+    expect(screen.getByText('Sign in to Agentic Chat')).toBeInTheDocument();
+    expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
+  });
+
+  it('shows continue button on login page', () => {
+    render(<App />);
+    expect(screen.getByRole('button', { name: /continue/i })).toBeInTheDocument();
   });
 });
