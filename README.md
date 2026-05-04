@@ -470,6 +470,20 @@ Elysia was the runner-up — its Eden Treaty type safety is excellent and the SS
 
 ---
 
+## Known Trade-offs & Future Improvements
+
+Two additions were scoped out due to time constraints but are worth noting:
+
+**Frontend — Formik + Yup for form validation**
+
+The login and register forms currently use plain React state with manual validation. [Formik](https://formik.org/) paired with [Yup](https://github.com/jquense/yup) would give declarative schema-driven validation, field-level error state, touched/dirty tracking, and accessible error messages out of the box — particularly valuable as the form count grows (profile editing, preferences). The backend already uses Zod schemas per endpoint; Yup would be the frontend equivalent, keeping validation logic co-located with each form rather than scattered across event handlers.
+
+**Backend — LiveKit voice agent for real-time streaming TTS**
+
+The current TTS implementation generates audio for a complete assistant message after streaming finishes, then plays it back. A better UX would pipe each `text-delta` SSE event directly into a [LiveKit](https://livekit.io/) voice agent, which maintains an open audio stream and speaks tokens as they arrive — eliminating the wait between the last token and audio playback. LiveKit's agent framework handles sentence boundary detection, audio buffering, and WebRTC transport. The trade-off is added infrastructure (LiveKit server or LiveKit Cloud), a more complex backend pipeline, and a WebRTC session instead of simple HTTP audio bytes. The current batch TTS approach was chosen to keep the dependency surface small and the architecture easy to follow.
+
+---
+
 ## Development Approach
 
 This project follows **TDD (Test-Driven Development)**. Each GitHub issue defines acceptance criteria as tests. The workflow:
