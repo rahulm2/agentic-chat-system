@@ -14,5 +14,8 @@ export const chatRequestSchema = z.object({
   conversationId: z.string().min(1).optional(),
 });
 
-export type ListConversationsInput = z.infer<typeof listConversationsSchema>;
-export type ChatRequest = z.infer<typeof chatRequestSchema>;
+/** DTO: validated query params for listing conversations */
+export type ListConversationsDTO = z.infer<typeof listConversationsSchema>;
+
+/** DTO: validated body passed from controller to ConversationService.handleChat() */
+export type ChatRequestDTO = z.infer<typeof chatRequestSchema>;

@@ -27,5 +27,8 @@ export const messageIdSchema = z.object({
   id: z.string().min(1),
 });
 
-export type CreateMessageInput = z.infer<typeof createMessageSchema>;
-export type CreateMessageWithToolCallsInput = z.infer<typeof createMessageWithToolCallsSchema>;
+/** DTO: validated body for creating a single message */
+export type CreateMessageDTO = z.infer<typeof createMessageSchema>;
+
+/** DTO: validated body for creating a message with tool calls */
+export type CreateMessageWithToolCallsDTO = z.infer<typeof createMessageWithToolCallsSchema>;

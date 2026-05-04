@@ -8,15 +8,16 @@ import {
   typographyPresets,
   borderSemantics,
 } from '../design-system';
-import type { ChatMessage, MessageMetadata, MessageRole } from '../context/types';
+import type { ChatMessage, MessageRole } from '../context/types';
 
 // New props shape — pass a full ChatMessage object
 interface MessageBubbleNewProps {
   message: ChatMessage;
   isStreaming?: boolean;
-  metadata?: MessageMetadata | null;
   onRegenerate?: () => void;
   onDelete?: () => void;
+  onPlayAudio?: () => void;
+  isPlayingAudio?: boolean;
   // Ensure old flat props are not present in this shape
   id?: never;
   role?: never;
@@ -29,9 +30,10 @@ interface MessageBubbleLegacyProps {
   role: MessageRole;
   content: string;
   isStreaming?: boolean;
-  metadata?: MessageMetadata | null;
   onRegenerate?: () => void;
   onDelete?: () => void;
+  onPlayAudio?: () => void;
+  isPlayingAudio?: boolean;
   message?: never;
 }
 
@@ -44,7 +46,7 @@ const MessageBubble = memo(function MessageBubble(props: MessageBubbleProps) {
       ? props.message
       : { id: props.id, role: props.role, content: props.content };
 
-  const { isStreaming, metadata, onRegenerate, onDelete } = props;
+  const { isStreaming, onRegenerate, onDelete, onPlayAudio, isPlayingAudio } = props;
   const isUser = message.role === 'user';
 
   return (
@@ -111,9 +113,10 @@ const MessageBubble = memo(function MessageBubble(props: MessageBubbleProps) {
         <MessageContent
           message={message}
           isStreaming={isStreaming}
-          metadata={metadata}
           onRegenerate={onRegenerate}
           onDelete={onDelete}
+          onPlayAudio={onPlayAudio}
+          isPlayingAudio={isPlayingAudio}
         />
       </Box>
     </Box>

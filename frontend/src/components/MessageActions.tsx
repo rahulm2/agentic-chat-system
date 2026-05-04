@@ -6,18 +6,24 @@ import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined';
 import CheckOutlinedIcon from '@mui/icons-material/CheckOutlined';
 import RefreshOutlinedIcon from '@mui/icons-material/RefreshOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import VolumeUpOutlinedIcon from '@mui/icons-material/VolumeUpOutlined';
+import StopCircleOutlinedIcon from '@mui/icons-material/StopCircleOutlined';
 import { colorSemantics, spacing } from '../design-system';
 
 interface MessageActionsProps {
   content: string;
   onRegenerate?: () => void;
   onDelete?: () => void;
+  onPlayAudio?: () => void;
+  isPlayingAudio?: boolean;
 }
 
 const MessageActions = memo(function MessageActions({
   content,
   onRegenerate,
   onDelete,
+  onPlayAudio,
+  isPlayingAudio,
 }: MessageActionsProps) {
   const [copied, setCopied] = useState(false);
 
@@ -62,6 +68,33 @@ const MessageActions = memo(function MessageActions({
           )}
         </IconButton>
       </Tooltip>
+
+      {onPlayAudio && (
+        <Tooltip title={isPlayingAudio ? 'Stop' : 'Read aloud'} placement="top">
+          <IconButton
+            size="small"
+            onClick={onPlayAudio}
+            sx={{
+              color: isPlayingAudio
+                ? colorSemantics.interactive.primary
+                : colorSemantics.icon.secondary,
+              p: `${spacing.component.xxs}px`,
+              '&:hover': {
+                color: isPlayingAudio
+                  ? colorSemantics.interactive.primaryHover
+                  : colorSemantics.icon.primary,
+                backgroundColor: colorSemantics.interactive.ghostHover,
+              },
+            }}
+          >
+            {isPlayingAudio ? (
+              <StopCircleOutlinedIcon sx={{ fontSize: 14 }} />
+            ) : (
+              <VolumeUpOutlinedIcon sx={{ fontSize: 14 }} />
+            )}
+          </IconButton>
+        </Tooltip>
+      )}
 
       {onRegenerate && (
         <Tooltip title="Regenerate" placement="top">

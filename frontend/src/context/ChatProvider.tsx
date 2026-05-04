@@ -31,11 +31,9 @@ function useDispatchSelector({ dispatch }: { state: ChatState; dispatch: Dispatc
 
 function useConversationSelector({ state }: { state: ChatState; dispatch: Dispatch<ChatAction> }): {
   currentConversationId: string | null;
-  metadata: ChatState['metadata'];
 } {
   return {
     currentConversationId: state.currentConversationId,
-    metadata: state.metadata,
   };
 }
 

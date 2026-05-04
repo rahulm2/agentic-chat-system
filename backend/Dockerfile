@@ -15,7 +15,9 @@ RUN bunx prisma generate
 COPY src ./src
 COPY tsconfig.json ./
 
+COPY scripts ./scripts
+
 EXPOSE 3000
 
-# Entrypoint: push schema then start server
-CMD ["sh", "-c", "bunx prisma db push && bun run src/index.ts"]
+# Entrypoint: apply pending migrations → seed default user → start server
+CMD ["sh", "-c", "bunx prisma migrate deploy && bun run scripts/seed.ts && bun run src/index.ts"]

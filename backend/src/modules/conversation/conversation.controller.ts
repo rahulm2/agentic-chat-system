@@ -1,35 +1,38 @@
-import type { Context } from "hono";
 import { streamSSE } from "hono/streaming";
-import { Controller, Get, Post, Delete } from "@asla/hono-decorator";
+import { Controller, Get, Post, Delete, Use } from "@asla/hono-decorator";
 import type { SSEWriter } from "@/common/types.ts";
+import type { AppContext } from "@/common/typed-context.ts";
+import { validateBody, validateQuery, getBody, getQuery, getUser } from "@/middleware/validate.ts";
 import type { ConversationService } from "./conversation.service.ts";
 import { listConversationsSchema, chatRequestSchema } from "./conversation.schema.ts";
+import type { ListConversationsDTO, ChatRequestDTO } from "./conversation.schema.ts";
 
 @Controller({ basePath: "/api/conversations" })
 export class ConversationController {
   constructor(private service: ConversationService) {}
 
-  @Get("/")
-  async list(c: Context) {
-    const user = c.get("user" as never) as { sub: string };
-    const { limit, offset } = listConversationsSchema.parse(c.req.query());
+  @Get("")
+  @Use(validateQuery(listConversationsSchema))
+  async list(c: AppContext) {
+    const user = getUser(c);
+    const { limit, offset } = getQuery<ListConversationsDTO>(c);
     const result = await this.service.list(user.sub, limit, offset);
     return c.json(result);
   }
 
   @Get("/:id")
-  async getById(c: Context) {
-    const user = c.get("user" as never) as { sub: string };
+  async getById(c: AppContext) {
+    const user = getUser(c);
     const id = c.req.param("id")!;
     const conversation = await this.service.getById(id, user.sub);
     return c.json(conversation);
   }
 
   @Post("/completions")
-  async completions(c: Context) {
-    const body = await c.req.json();
-    const request = chatRequestSchema.parse(body);
-    const user = c.get("user" as never) as { sub: string };
+  @Use(validateBody(chatRequestSchema))
+  async completions(c: AppContext) {
+    const dto = getBody<ChatRequestDTO>(c);
+    const user = getUser(c);
 
     return streamSSE(c, async (stream) => {
       const writer: SSEWriter = {
@@ -44,13 +47,13 @@ export class ConversationController {
         },
       };
 
-      await this.service.handleChat(user.sub, request, writer);
+      await this.service.handleChat(user.sub, dto, writer);
     });
   }
 
   @Delete("/:id")
-  async delete(c: Context) {
-    const user = c.get("user" as never) as { sub: string };
+  async delete(c: AppContext) {
+    const user = getUser(c);
     const id = c.req.param("id")!;
     await this.service.delete(id, user.sub);
     return c.json({ success: true });

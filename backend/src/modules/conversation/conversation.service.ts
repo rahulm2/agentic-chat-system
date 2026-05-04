@@ -6,7 +6,7 @@ import type { MessageService } from "@/modules/message/message.service.ts";
 import { AgentRunner } from "@/agent/agent-loop.ts";
 import type { AgentConfig } from "@/agent/agent-loop.ts";
 import type { ConversationRepository } from "./conversation.repository.ts";
-import type { ChatRequest } from "./conversation.schema.ts";
+import type { ChatRequestDTO } from "./conversation.schema.ts";
 
 export interface ConversationServiceConfig {
   openaiApiKey: string;
@@ -17,14 +17,15 @@ export interface ConversationServiceConfig {
 
 export class ConversationService {
   private agentRunner: AgentRunner;
+  private openai: OpenAI;
 
   constructor(
     private repository: ConversationRepository,
     private messageService: MessageService,
     config: ConversationServiceConfig,
   ) {
-    const openai = new OpenAI({ apiKey: config.openaiApiKey });
-    this.agentRunner = new AgentRunner(openai, {
+    this.openai = new OpenAI({ apiKey: config.openaiApiKey });
+    this.agentRunner = new AgentRunner(this.openai, {
       model: config.model,
       maxSteps: config.maxSteps,
       timeoutMs: config.timeoutMs,
@@ -61,13 +62,42 @@ export class ConversationService {
     await this.repository.delete(id);
   }
 
+  private async generateTitle(userMessage: string, assistantResponse: string): Promise<string> {
+    try {
+      const response = await this.openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content:
+              "Generate a short conversation title (max 6 words) based on the user message and assistant response. " +
+              "Return ONLY the title, no quotes, no punctuation at the end.",
+          },
+          {
+            role: "user",
+            content: `User: ${userMessage}\n\nAssistant: ${assistantResponse.slice(0, 200)}`,
+          },
+        ],
+        max_tokens: 20,
+        temperature: 0.7,
+      });
+      return response.choices[0]?.message?.content?.trim() || "New conversation";
+    } catch {
+      // Fallback: truncate user message
+      const cleaned = userMessage.trim().replace(/\n+/g, " ");
+      if (cleaned.length <= 40) return cleaned;
+      return cleaned.slice(0, 40).replace(/\s+\S*$/, "") + "...";
+    }
+  }
+
   async handleChat(
     userId: string,
-    request: ChatRequest,
+    request: ChatRequestDTO,
     writer: SSEWriter,
   ): Promise<void> {
     // Get or create conversation
     let conversationId = request.conversationId;
+    const isNewConversation = !conversationId;
     if (!conversationId) {
       const conversation = await this.create(userId);
       conversationId = conversation.id;
@@ -119,6 +149,13 @@ export class ConversationService {
           reasoning: agentResult.reasoning || undefined,
         });
       }
+    }
+
+    // Generate and persist title for new conversations, emit via SSE
+    if (isNewConversation && agentResult.content) {
+      const title = await this.generateTitle(request.message, agentResult.content);
+      await this.repository.updateTitle(conversationId, title);
+      await writer.writeSSE("title", { title, conversationId });
     }
 
     writer.close();

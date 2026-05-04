@@ -12,6 +12,7 @@ import type { MessageMetadata } from '../context/types';
 
 interface MetadataBarProps {
   metadata: MessageMetadata;
+  createdAt?: string;
 }
 
 interface MetadataItem {
@@ -19,8 +20,19 @@ interface MetadataItem {
   tooltip: string;
 }
 
-const MetadataBar = memo(function MetadataBar({ metadata }: MetadataBarProps) {
+const MetadataBar = memo(function MetadataBar({ metadata, createdAt }: MetadataBarProps) {
   const items: MetadataItem[] = [];
+
+  if (createdAt) {
+    const date = new Date(createdAt);
+    const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const dateStr = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    const isToday = date.toDateString() === new Date().toDateString();
+    items.push({
+      label: isToday ? timeStr : `${dateStr} ${timeStr}`,
+      tooltip: date.toLocaleString(),
+    });
+  }
 
   if (metadata.model) {
     items.push({
