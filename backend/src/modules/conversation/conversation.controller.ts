@@ -9,7 +9,7 @@ import { listConversationsSchema, chatRequestSchema } from "./conversation.schem
 export class ConversationController {
   constructor(private service: ConversationService) {}
 
-  @Get("/")
+  @Get("")
   async list(c: Context) {
     const user = c.get("user" as never) as { sub: string };
     const { limit, offset } = listConversationsSchema.parse(c.req.query());

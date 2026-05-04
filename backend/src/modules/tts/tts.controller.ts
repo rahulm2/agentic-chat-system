@@ -7,7 +7,7 @@ import { ttsRequestSchema } from "./tts.schema.ts";
 export class TtsController {
   constructor(private service: TtsService) {}
 
-  @Post("/")
+  @Post("")
   async synthesize(c: Context) {
     const body = ttsRequestSchema.parse(await c.req.json());
     const audioBuffer = await this.service.synthesize(body.text);
