@@ -21,7 +21,7 @@ export default function ChatPage() {
   const messages = useMessages();
   const { streamingMessageId, streamingStatus } = useStreamingStatus();
   const dispatch = useChatDispatch();
-  const { currentConversationId, metadata } = useConversation();
+  const { currentConversationId } = useConversation();
   const logoutMutation = useLogout();
   const { voiceEnabled, toggleVoice, play: playTts, playingMessageId, stopPlayback } = useTextToSpeech();
 
@@ -164,7 +164,6 @@ export default function ChatPage() {
           messages={messages}
           streamingMessageId={streamingMessageId}
           onSelectPrompt={handleSend}
-          metadata={metadata}
           onDeleteMessage={handleDeleteMessage}
           isPending={isPending}
           onPlayAudio={(messageId, content) => {

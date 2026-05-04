@@ -4,13 +4,12 @@ import MessageBubble from './MessageBubble';
 import WelcomePrompts from './WelcomePrompts';
 import StreamingIndicator from './StreamingIndicator';
 import { spacing } from '../design-system';
-import type { ChatMessage, MessageMetadata } from '../context/types';
+import type { ChatMessage } from '../context/types';
 
 export interface MessageListProps {
   messages: ChatMessage[];
   streamingMessageId: string | null;
   onSelectPrompt: (prompt: string) => void;
-  metadata?: MessageMetadata | null;
   onRegenerate?: (messageId: string) => void;
   onDeleteMessage?: (messageId: string) => void;
   isPending?: boolean;
@@ -22,7 +21,6 @@ export default function MessageList({
   messages,
   streamingMessageId,
   onSelectPrompt,
-  metadata,
   onRegenerate,
   onDeleteMessage,
   isPending,
@@ -43,12 +41,6 @@ export default function MessageList({
     );
   }
 
-  // Find the last assistant message index for metadata display
-  const lastAssistantIndex = messages.reduce(
-    (acc, msg, idx) => (msg.role === 'assistant' ? idx : acc),
-    -1,
-  );
-
   return (
     <Box
       data-testid="message-area"
@@ -62,12 +54,11 @@ export default function MessageList({
         gap: `${spacing.gap.xl}px`,
       }}
     >
-      {messages.map((msg, index) => (
+      {messages.map((msg) => (
         <MessageBubble
           key={msg.id}
           message={msg}
           isStreaming={msg.id === streamingMessageId}
-          metadata={index === lastAssistantIndex ? metadata : null}
           onRegenerate={
             onRegenerate && msg.role === 'assistant'
               ? () => onRegenerate(msg.id)

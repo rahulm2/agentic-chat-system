@@ -7,12 +7,11 @@ import ReasoningPanel from './ReasoningPanel';
 import MetadataBar from './MetadataBar';
 import MessageActions from './MessageActions';
 import { colorSemantics, spacing, typographyPresets } from '../design-system';
-import type { ChatMessage, MessageMetadata } from '../context/types';
+import type { ChatMessage } from '../context/types';
 
 interface MessageContentProps {
   message: ChatMessage;
   isStreaming?: boolean;
-  metadata?: MessageMetadata | null;
   onRegenerate?: () => void;
   onDelete?: () => void;
   onPlayAudio?: () => void;
@@ -22,7 +21,6 @@ interface MessageContentProps {
 const MessageContent = memo(function MessageContent({
   message,
   isStreaming,
-  metadata,
   onRegenerate,
   onDelete,
   onPlayAudio,
@@ -74,9 +72,9 @@ const MessageContent = memo(function MessageContent({
         <MarkdownRenderer content={message.content} isStreaming={isStreaming} />
       )}
 
-      {/* Metadata bar — assistant only */}
-      {isAssistant && metadata && (
-        <MetadataBar metadata={metadata} />
+      {/* Metadata bar — assistant only, per-message */}
+      {isAssistant && message.metadata && (
+        <MetadataBar metadata={message.metadata} createdAt={message.createdAt} />
       )}
 
       {/* Message actions — all roles */}

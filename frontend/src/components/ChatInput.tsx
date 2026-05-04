@@ -29,7 +29,7 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
     setValue(text);
   }, []);
 
-  const { isListening, isSupported, toggle: toggleListening } = useSpeechToText({
+  const { isListening, isSupported, toggle: toggleListening, stop: stopListening } = useSpeechToText({
     onTranscript: handleVoiceTranscript,
     onInterim: handleVoiceInterim,
   });
@@ -46,6 +46,7 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
     e.preventDefault();
     const trimmed = value.trim();
     if (!trimmed || disabled) return;
+    if (isListening) stopListening();
     onSend(trimmed);
     setValue('');
   };

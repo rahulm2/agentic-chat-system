@@ -5,7 +5,6 @@ export const initialChatState: ChatState = {
   streamingStatus: 'idle',
   streamingMessageId: null,
   currentConversationId: null,
-  metadata: null,
   error: null,
 };
 
@@ -114,7 +113,11 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
     case 'STREAM_METADATA':
       return {
         ...state,
-        metadata: action.payload,
+        messages: state.messages.map((msg) =>
+          msg.id === state.streamingMessageId
+            ? { ...msg, metadata: action.payload }
+            : msg
+        ),
       };
 
     case 'STREAM_ERROR':

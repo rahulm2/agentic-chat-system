@@ -204,7 +204,7 @@ describe('chatReducer', () => {
   });
 
   describe('STREAM_METADATA', () => {
-    it('sets metadata', () => {
+    it('attaches metadata to the streaming message', () => {
       const metadata = {
         model: 'gpt-4o',
         inputTokens: 150,
@@ -213,12 +213,19 @@ describe('chatReducer', () => {
         estimatedCost: 0.0025,
       };
 
-      const result = chatReducer(initialChatState, {
+      const stateWithStreaming: ChatState = {
+        ...initialChatState,
+        streamingStatus: 'streaming',
+        streamingMessageId: 'msg-1',
+        messages: [{ id: 'msg-1', role: 'assistant', content: 'Hello' }],
+      };
+
+      const result = chatReducer(stateWithStreaming, {
         type: 'STREAM_METADATA',
         payload: metadata,
       });
 
-      expect(result.metadata).toEqual(metadata);
+      expect(result.messages[0]!.metadata).toEqual(metadata);
     });
   });
 
@@ -288,7 +295,6 @@ describe('chatReducer', () => {
         streamingStatus: 'streaming',
         streamingMessageId: 'msg-2',
         currentConversationId: 'conv-1',
-        metadata: { model: 'gpt-4o' },
         error: 'some error',
       };
 

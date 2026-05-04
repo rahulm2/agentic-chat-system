@@ -22,6 +22,7 @@ export interface ChatMessage {
   reasoning?: string;
   toolCalls?: ToolCall[];
   createdAt?: string;
+  metadata?: MessageMetadata;
 }
 
 // Metadata from the AI response
@@ -53,7 +54,6 @@ export interface ChatState {
   streamingStatus: StreamingStatus;
   streamingMessageId: string | null;
   currentConversationId: string | null;
-  metadata: MessageMetadata | null;
   error: string | null;
 }
 
