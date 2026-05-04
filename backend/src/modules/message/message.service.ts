@@ -1,5 +1,5 @@
 import { AppError } from "@/common/errors.ts";
-import type { MessageRepository, CreateMessageData, ToolCallData } from "./message.repository.ts";
+import type { MessageRepository, CreateMessageDAO, ToolCallDAO } from "./message.repository.ts";
 
 export class MessageService {
   constructor(private repository: MessageRepository) {}
@@ -8,12 +8,12 @@ export class MessageService {
     return this.repository.findByConversationId(conversationId);
   }
 
-  async create(data: CreateMessageData) {
-    return this.repository.create(data);
+  async create(dao: CreateMessageDAO) {
+    return this.repository.create(dao);
   }
 
-  async createWithToolCalls(data: CreateMessageData, toolCalls: ToolCallData[]) {
-    return this.repository.createWithToolCalls(data, toolCalls);
+  async createWithToolCalls(dao: CreateMessageDAO, toolCalls: ToolCallDAO[]) {
+    return this.repository.createWithToolCalls(dao, toolCalls);
   }
 
   async delete(id: string, userId: string) {

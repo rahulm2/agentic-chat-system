@@ -1,7 +1,7 @@
 import { sign } from "hono/jwt";
 import { AppError } from "@/common/errors.ts";
 import type { AuthRepository } from "./auth.repository.ts";
-import type { RegisterInput, LoginInput, UpdateProfileInput } from "./auth.schema.ts";
+import type { RegisterDTO, LoginDTO, UpdateProfileDTO } from "./auth.schema.ts";
 
 export interface AuthUser {
   id: string;
@@ -36,30 +36,30 @@ export class AuthService {
     private jwtSecret: string,
   ) {}
 
-  async register(input: RegisterInput): Promise<{ user: AuthUser; token: string }> {
-    const existing = await this.repository.findByEmail(input.email);
+  async register(dto: RegisterDTO): Promise<{ user: AuthUser; token: string }> {
+    const existing = await this.repository.findByEmail(dto.email);
     if (existing) {
       throw new AppError("Email already exists", "EMAIL_ALREADY_EXISTS", 409);
     }
 
-    const passwordHash = await Bun.password.hash(input.password);
+    const passwordHash = await Bun.password.hash(dto.password);
     const user = await this.repository.create({
-      email: input.email,
+      email: dto.email,
       passwordHash,
-      name: input.name,
+      name: dto.name,
     });
 
     const token = await this.generateToken(user.id, user.email);
     return { user: toAuthUser(user), token };
   }
 
-  async login(input: LoginInput): Promise<{ user: AuthUser; token: string }> {
-    const user = await this.repository.findByEmail(input.email);
+  async login(dto: LoginDTO): Promise<{ user: AuthUser; token: string }> {
+    const user = await this.repository.findByEmail(dto.email);
     if (!user) {
       throw new AppError("Invalid credentials", "INVALID_CREDENTIALS", 401);
     }
 
-    const valid = await Bun.password.verify(input.password, user.passwordHash);
+    const valid = await Bun.password.verify(dto.password, user.passwordHash);
     if (!valid) {
       throw new AppError("Invalid credentials", "INVALID_CREDENTIALS", 401);
     }
@@ -76,8 +76,8 @@ export class AuthService {
     return toAuthUser(user);
   }
 
-  async updateProfile(userId: string, input: UpdateProfileInput): Promise<AuthUser> {
-    const user = await this.repository.update(userId, input);
+  async updateProfile(userId: string, dto: UpdateProfileDTO): Promise<AuthUser> {
+    const user = await this.repository.update(userId, dto);
     return toAuthUser(user);
   }
 

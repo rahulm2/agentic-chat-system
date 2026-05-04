@@ -6,7 +6,7 @@ import type { MessageService } from "@/modules/message/message.service.ts";
 import { AgentRunner } from "@/agent/agent-loop.ts";
 import type { AgentConfig } from "@/agent/agent-loop.ts";
 import type { ConversationRepository } from "./conversation.repository.ts";
-import type { ChatRequest } from "./conversation.schema.ts";
+import type { ChatRequestDTO } from "./conversation.schema.ts";
 
 export interface ConversationServiceConfig {
   openaiApiKey: string;
@@ -92,7 +92,7 @@ export class ConversationService {
 
   async handleChat(
     userId: string,
-    request: ChatRequest,
+    request: ChatRequestDTO,
     writer: SSEWriter,
   ): Promise<void> {
     // Get or create conversation

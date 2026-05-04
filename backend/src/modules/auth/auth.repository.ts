@@ -1,5 +1,5 @@
 import type { PrismaClient, User, Prisma } from "@prisma/client";
-import type { UpdateProfileInput } from "./auth.schema.ts";
+import type { UpdateProfileDTO } from "./auth.schema.ts";
 
 export class AuthRepository {
   constructor(private prisma: PrismaClient) {}
@@ -20,11 +20,11 @@ export class AuthRepository {
     return this.prisma.user.create({ data });
   }
 
-  async update(id: string, data: UpdateProfileInput): Promise<User> {
+  async update(id: string, dto: UpdateProfileDTO): Promise<User> {
     const updateData: Prisma.UserUpdateInput = {};
-    if (data.name !== undefined) updateData.name = data.name;
-    if (data.avatar !== undefined) updateData.avatar = data.avatar;
-    if (data.preferences !== undefined) updateData.preferences = data.preferences as Prisma.InputJsonValue;
+    if (dto.name !== undefined) updateData.name = dto.name;
+    if (dto.avatar !== undefined) updateData.avatar = dto.avatar;
+    if (dto.preferences !== undefined) updateData.preferences = dto.preferences as Prisma.InputJsonValue;
     return this.prisma.user.update({
       where: { id },
       data: updateData,

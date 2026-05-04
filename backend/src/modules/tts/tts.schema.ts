@@ -5,4 +5,5 @@ export const ttsRequestSchema = z.object({
   messageId: z.string().optional(),
 });
 
-export type TtsRequestInput = z.infer<typeof ttsRequestSchema>;
+/** DTO: validated body passed from controller to TtsService.synthesize() */
+export type TtsRequestDTO = z.infer<typeof ttsRequestSchema>;

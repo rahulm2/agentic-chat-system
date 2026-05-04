@@ -1,13 +1,15 @@
 import type { PrismaClient, Message, Prisma } from "@prisma/client";
 
-export interface CreateMessageData {
+/** DAO: data shape the repository accepts to create a message row */
+export interface CreateMessageDAO {
   conversationId: string;
   role: string;
   content: string;
   reasoning?: string;
 }
 
-export interface ToolCallData {
+/** DAO: data shape the repository accepts for each tool call row */
+export interface ToolCallDAO {
   toolName: string;
   args: Record<string, unknown>;
   result?: Record<string, unknown>;
@@ -42,21 +44,21 @@ export class MessageRepository {
     return last ? last.orderIndex + 1 : 0;
   }
 
-  async create(data: CreateMessageData): Promise<Message> {
-    const orderIndex = await this.getNextOrderIndex(data.conversationId);
+  async create(dao: CreateMessageDAO): Promise<Message> {
+    const orderIndex = await this.getNextOrderIndex(dao.conversationId);
     return this.prisma.message.create({
-      data: { ...data, orderIndex },
+      data: { ...dao, orderIndex },
     });
   }
 
   async createWithToolCalls(
-    data: CreateMessageData,
-    toolCalls: ToolCallData[],
+    dao: CreateMessageDAO,
+    toolCalls: ToolCallDAO[],
   ) {
-    const orderIndex = await this.getNextOrderIndex(data.conversationId);
+    const orderIndex = await this.getNextOrderIndex(dao.conversationId);
     return this.prisma.message.create({
       data: {
-        ...data,
+        ...dao,
         orderIndex,
         toolCalls: {
           create: toolCalls.map((tc) => ({

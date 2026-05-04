@@ -17,6 +17,11 @@ export const updateProfileSchema = z.object({
   preferences: z.record(z.string(), z.unknown()).optional(),
 });
 
-export type RegisterInput = z.infer<typeof registerSchema>;
-export type LoginInput = z.infer<typeof loginSchema>;
-export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+/** DTO: validated body passed from controller to AuthService.register() */
+export type RegisterDTO = z.infer<typeof registerSchema>;
+
+/** DTO: validated body passed from controller to AuthService.login() */
+export type LoginDTO = z.infer<typeof loginSchema>;
+
+/** DTO: validated body passed from controller to AuthService.updateProfile() */
+export type UpdateProfileDTO = z.infer<typeof updateProfileSchema>;
