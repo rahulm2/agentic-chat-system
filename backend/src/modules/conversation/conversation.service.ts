@@ -17,14 +17,15 @@ export interface ConversationServiceConfig {
 
 export class ConversationService {
   private agentRunner: AgentRunner;
+  private openai: OpenAI;
 
   constructor(
     private repository: ConversationRepository,
     private messageService: MessageService,
     config: ConversationServiceConfig,
   ) {
-    const openai = new OpenAI({ apiKey: config.openaiApiKey });
-    this.agentRunner = new AgentRunner(openai, {
+    this.openai = new OpenAI({ apiKey: config.openaiApiKey });
+    this.agentRunner = new AgentRunner(this.openai, {
       model: config.model,
       maxSteps: config.maxSteps,
       timeoutMs: config.timeoutMs,
@@ -61,6 +62,28 @@ export class ConversationService {
     await this.repository.delete(id);
   }
 
+  private async generateTitle(userMessage: string): Promise<string> {
+    try {
+      const response = await this.openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content:
+              "Generate a short conversation title (max 6 words) for the following user message. " +
+              "Return ONLY the title, no quotes, no punctuation at the end.",
+          },
+          { role: "user", content: userMessage },
+        ],
+        max_tokens: 20,
+        temperature: 0.7,
+      });
+      return response.choices[0]?.message?.content?.trim() || "New conversation";
+    } catch {
+      return "New conversation";
+    }
+  }
+
   async handleChat(
     userId: string,
     request: ChatRequest,
@@ -68,6 +91,7 @@ export class ConversationService {
   ): Promise<void> {
     // Get or create conversation
     let conversationId = request.conversationId;
+    const isNewConversation = !conversationId;
     if (!conversationId) {
       const conversation = await this.create(userId);
       conversationId = conversation.id;
@@ -79,6 +103,13 @@ export class ConversationService {
       role: "user",
       content: request.message,
     });
+
+    // Generate title for new conversations (fire-and-forget, don't block streaming)
+    if (isNewConversation) {
+      this.generateTitle(request.message).then((title) =>
+        this.repository.updateTitle(conversationId!, title),
+      );
+    }
 
     // Build history for the agent
     const history = await this.messageService.findByConversationId(conversationId);

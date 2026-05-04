@@ -37,6 +37,13 @@ export class ConversationRepository {
     return this.prisma.conversation.create({ data });
   }
 
+  async updateTitle(id: string, title: string): Promise<Conversation> {
+    return this.prisma.conversation.update({
+      where: { id },
+      data: { title },
+    });
+  }
+
   async delete(id: string): Promise<void> {
     await this.prisma.conversation.delete({ where: { id } });
   }

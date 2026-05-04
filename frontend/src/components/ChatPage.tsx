@@ -44,14 +44,16 @@ export default function ChatPage() {
     }
   }, [pendingConvDetail, dispatch]);
 
-  // On-mount hydration: load the most recent conversation once
+  // On-mount hydration: load from URL /c/:id or fall back to most recent
   const { data: convList, isSuccess: listLoaded } = useConversationList();
   const hydratedRef = useRef(false);
   useEffect(() => {
     if (listLoaded && !hydratedRef.current) {
       hydratedRef.current = true;
-      const firstId = convList?.conversations[0]?.id;
-      if (firstId) setPendingConvId(firstId);
+      const urlMatch = window.location.pathname.match(/^\/c\/(.+)$/);
+      const urlConvId = urlMatch?.[1];
+      const targetId = urlConvId || convList?.conversations[0]?.id;
+      if (targetId) setPendingConvId(targetId);
     }
   }, [listLoaded, convList]);
 
@@ -73,6 +75,7 @@ export default function ChatPage() {
     // Allow re-selecting any conversation after clearing
     setPendingConvId(null);
     loadedConvIdRef.current = null;
+    window.history.pushState(null, '', '/');
   };
 
   const handleToggleSidebar = () => setSidebarOpen((prev) => !prev);
@@ -86,6 +89,7 @@ export default function ChatPage() {
   const handleSelectConversation = (id: string) => {
     if (id === currentConversationId) return;
     setPendingConvId(id);
+    window.history.pushState(null, '', `/c/${id}`);
   };
 
   const handleDeleteConversation = (id: string) => {
@@ -93,8 +97,19 @@ export default function ChatPage() {
       dispatch({ type: 'CLEAR_CONVERSATION' });
       setPendingConvId(null);
       loadedConvIdRef.current = null;
+      window.history.pushState(null, '', '/');
     }
   };
+
+  // Sync URL when conversation changes
+  useEffect(() => {
+    if (currentConversationId) {
+      const currentPath = window.location.pathname;
+      if (currentPath !== `/c/${currentConversationId}`) {
+        window.history.replaceState(null, '', `/c/${currentConversationId}`);
+      }
+    }
+  }, [currentConversationId]);
 
   // Auto-play TTS when streaming finishes for the latest assistant message
   const prevStreamingStatusRef = useRef(streamingStatus);
