@@ -1,6 +1,6 @@
-const RXNORM_BASE = "https://rxnav.nlm.nih.gov/REST";
-const TIMEOUT_MS = 10_000;
-const MAX_RETRIES = 2;
+import { ToolNotFoundError } from "@/common/errors.ts";
+import { fetchWithRetry } from "./fetch-with-retry.ts";
+import { TOOL_CONSTANTS } from "./constants.ts";
 
 interface RxNormDrugGroup {
   name: string;
@@ -23,37 +23,9 @@ export interface RxNormResult {
   rxcuis: { rxcui: string; name: string; tty: string }[];
 }
 
-async function fetchWithRetry(url: string, retries = MAX_RETRIES): Promise<Response> {
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
-      const res = await fetch(url, { signal: controller.signal });
-      clearTimeout(timeout);
-
-      if (res.ok) return res;
-      if (res.status >= 500 && attempt < retries) {
-        await new Promise((r) => setTimeout(r, 1000 * 2 ** attempt));
-        continue;
-      }
-      throw new Error(`RxNorm API error: ${res.status} ${res.statusText}`);
-    } catch (err) {
-      if (attempt < retries && (err as Error).name === "AbortError") {
-        await new Promise((r) => setTimeout(r, 1000 * 2 ** attempt));
-        continue;
-      }
-      if ((err as Error).name === "AbortError") {
-        throw new Error("RxNorm API request timed out");
-      }
-      throw err;
-    }
-  }
-  throw new Error("RxNorm API: max retries exceeded");
-}
-
 export async function rxnormLookup(args: { drugName: string }): Promise<RxNormResult> {
-  const url = `${RXNORM_BASE}/drugs.json?name=${encodeURIComponent(args.drugName)}`;
-  const res = await fetchWithRetry(url);
+  const url = `${TOOL_CONSTANTS.RXNORM_BASE_URL}/drugs.json?name=${encodeURIComponent(args.drugName)}`;
+  const res = await fetchWithRetry(url, { toolName: "rxnorm_lookup" });
   const data = (await res.json()) as RxNormResponse;
 
   const rxcuis: RxNormResult["rxcuis"] = [];
@@ -72,7 +44,7 @@ export async function rxnormLookup(args: { drugName: string }): Promise<RxNormRe
   }
 
   if (rxcuis.length === 0) {
-    throw new Error(`No drugs found for "${args.drugName}"`);
+    throw new ToolNotFoundError(args.drugName);
   }
 
   return { drugName: args.drugName, rxcuis };

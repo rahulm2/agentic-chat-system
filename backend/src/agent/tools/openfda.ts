@@ -1,6 +1,6 @@
-const OPENFDA_BASE = "https://api.fda.gov/drug/event.json";
-const TIMEOUT_MS = 10_000;
-const MAX_RETRIES = 2;
+import { ToolError } from "@/common/errors.ts";
+import { fetchWithRetry } from "./fetch-with-retry.ts";
+import { TOOL_CONSTANTS } from "./constants.ts";
 
 interface OpenFDAEvent {
   patient?: {
@@ -30,60 +30,22 @@ export interface AdverseEventResult {
   }[];
 }
 
-async function fetchWithRetry(url: string, retries = MAX_RETRIES): Promise<Response> {
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
-      const res = await fetch(url, { signal: controller.signal });
-      clearTimeout(timeout);
-
-      if (res.ok) return res;
-
-      // Rate limit - retry with backoff
-      if (res.status === 429 && attempt < retries) {
-        await new Promise((r) => setTimeout(r, 1000 * 2 ** attempt));
-        continue;
-      }
-      if (res.status >= 500 && attempt < retries) {
-        await new Promise((r) => setTimeout(r, 1000 * 2 ** attempt));
-        continue;
-      }
-      // 404 means no results
-      if (res.status === 404) {
-        return res;
-      }
-      if (res.status === 429) {
-        throw new Error("openFDA API rate limit exceeded. Please try again later.");
-      }
-      throw new Error(`openFDA API error: ${res.status} ${res.statusText}`);
-    } catch (err) {
-      if (attempt < retries && (err as Error).name === "AbortError") {
-        await new Promise((r) => setTimeout(r, 1000 * 2 ** attempt));
-        continue;
-      }
-      if ((err as Error).name === "AbortError") {
-        throw new Error("openFDA API request timed out");
-      }
-      throw err;
-    }
-  }
-  throw new Error("openFDA API: max retries exceeded");
-}
-
 export async function openfdaAdverseEvents(args: {
   rxcui: string;
   limit?: number;
 }): Promise<AdverseEventResult> {
-  const limit = args.limit ?? 5;
-  let url = `${OPENFDA_BASE}?search=openfda.rxcui:${encodeURIComponent(args.rxcui)}&limit=${limit}`;
+  const limit = args.limit ?? TOOL_CONSTANTS.DEFAULT_ADVERSE_EVENT_LIMIT;
+  let url = `${TOOL_CONSTANTS.OPENFDA_BASE_URL}?search=openfda.rxcui:${encodeURIComponent(args.rxcui)}&limit=${limit}`;
 
   const apiKey = process.env.OPENFDA_API_KEY;
   if (apiKey) {
     url += `&api_key=${apiKey}`;
   }
 
-  const res = await fetchWithRetry(url);
+  const res = await fetchWithRetry(url, {
+    toolName: "openfda_adverse_events",
+    allowedStatuses: [404],
+  });
 
   if (res.status === 404) {
     return { rxcui: args.rxcui, totalResults: 0, events: [] };
@@ -92,7 +54,10 @@ export async function openfdaAdverseEvents(args: {
   const data = (await res.json()) as OpenFDAResponse;
 
   if (data.error) {
-    throw new Error(`openFDA API: ${data.error.message}`);
+    throw new ToolError(
+      `openFDA API: ${data.error.message}`,
+      "openfda_adverse_events",
+    );
   }
 
   const events = (data.results ?? []).map((event) => ({

@@ -1,3 +1,4 @@
+import { ToolError } from "@/common/errors.ts";
 import { rxnormLookup } from "./rxnorm.ts";
 import { openfdaAdverseEvents } from "./openfda.ts";
 
@@ -21,11 +22,7 @@ export async function executeTool(
 ): Promise<ToolResult> {
   const handler = toolHandlers[toolName];
   if (!handler) {
-    return {
-      result: { error: `Unknown tool: ${toolName}` },
-      isError: true,
-      durationMs: 0,
-    };
+    throw new ToolError(`Unknown tool: ${toolName}`, toolName);
   }
 
   const start = performance.now();
