@@ -9,10 +9,14 @@
     "test": "bun test",
     "test:unit": "bun test tests/unit",
     "test:integration": "bun test tests/integration",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:generate": "prisma generate --schema=prisma/schema.prisma",
+    "db:migrate": "prisma migrate dev --schema=prisma/schema.prisma",
+    "db:push": "prisma db push --schema=prisma/schema.prisma"
   },
   "devDependencies": {
     "@types/bun": "latest",
+    "@types/pg": "^8.20.0",
     "prisma": "^7.8.0"
   },
   "peerDependencies": {
@@ -21,9 +25,11 @@
   "dependencies": {
     "@asla/hono-decorator": "^0.0.1",
     "@hono/zod-validator": "^0.7.6",
+    "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "hono": "^4.12.16",
     "openai": "^6.35.0",
+    "pg": "^8.20.0",
     "zod": "^4.4.3"
   }
 }

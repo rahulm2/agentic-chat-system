@@ -1,2 +1,2 @@
-cd backend && bun run typecheck && bun test
+cd backend && bun run typecheck && bun run test:unit
 cd ../frontend && bun run typecheck && bun run test
