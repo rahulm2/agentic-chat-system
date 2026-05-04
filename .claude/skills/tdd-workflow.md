@@ -65,7 +65,7 @@ describe('ChatService', () => {
 ### Backend Integration Test (Hono app.request)
 ```typescript
 import { describe, it, expect, beforeAll } from 'bun:test';
-import app from '../../src/app';
+import { app } from '@/app';
 
 describe('POST /api/chat', () => {
   let authToken: string;

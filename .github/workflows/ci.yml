@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  backend:
+    name: Backend — Typecheck & Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        working-directory: backend
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        working-directory: backend
+        run: bun run typecheck
+
+      - name: Run unit tests
+        working-directory: backend
+        run: bun test:unit
+
+      - name: Run integration tests
+        working-directory: backend
+        run: bun test:integration

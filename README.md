@@ -4,7 +4,7 @@ A full-stack agentic chat system for healthcare, featuring a streaming AI backen
 
 ## Architecture
 
-- **Backend**: Bun + Hono + TypeScript, Prisma ORM, PostgreSQL
+- **Backend**: Bun + Hono + TypeScript, `@asla/hono-decorator` (NestJS-like decorators), Prisma ORM, PostgreSQL
 - **Frontend**: React + Vite + MUI, constate state management
 - **AI Agent**: OpenAI SDK with manual agentic loop, RxNorm + openFDA tools
 - **Voice**: Web Speech API (STT) + OpenAI TTS
@@ -45,7 +45,7 @@ npx playwright test  # E2E
 agentic-chat-system/
 ├── backend/           # Bun + Hono API server
 │   ├── src/
-│   │   ├── modules/   # Feature modules (auth, chat, conversation, message, tts, usage, health)
+│   │   ├── modules/   # Feature modules with @Controller decorators (auth, chat, conversation, message, tts, usage, health)
 │   │   ├── agent/     # AI agentic loop + healthcare tools
 │   │   ├── middleware/ # Auth guard, error handler, logger
 │   │   └── common/    # Shared types, errors, config

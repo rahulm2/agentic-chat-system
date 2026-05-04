@@ -23,77 +23,86 @@ Scaffold a new backend module following the NestJS-inspired pattern on Hono.
 | Service | Repository, Agent, external APIs | HTTP context (Request/Response) |
 | Repository | Prisma client | Business logic, HTTP |
 
-## Template: Controller (Hono router factory)
+## Template: Controller (decorator-based)
 ```typescript
 // backend/src/modules/<name>/<name>.controller.ts
-import { Hono } from 'hono';
+import type { Context } from 'hono';
+import { Controller, Use } from '@asla/hono-decorator';
+import { Get, Post, Delete } from '@asla/hono-decorator';
 import { zValidator } from '@hono/zod-validator';
 import { <Name>Service } from './<name>.service';
 import { <name>Schema } from './<name>.schema';
 
-export function create<Name>Routes(service: <Name>Service) {
-  const router = new Hono();
+@Controller({ basePath: '/api/<name>s' })
+export class <Name>Controller {
+  constructor(private readonly service: <Name>Service) {}
 
-  router.get('/', async (c) => {
-    const user = c.get('user'); // From auth middleware
-    const result = await service.findAll(user.id);
+  @Get('/')
+  async list(c: Context) {
+    const user = c.get('user');
+    const result = await this.service.findAll(user.id);
     return c.json(result);
-  });
+  }
 
-  router.get('/:id', async (c) => {
+  @Get('/:id')
+  async findOne(c: Context) {
     const user = c.get('user');
     const id = c.req.param('id');
-    const result = await service.findById(id, user.id);
+    const result = await this.service.findById(id, user.id);
     if (!result) return c.json({ error: 'Not found', code: 'NOT_FOUND' }, 404);
     return c.json(result);
-  });
+  }
 
-  router.post('/', zValidator('json', <name>Schema), async (c) => {
+  @Use(zValidator('json', <name>Schema))
+  @Post('/')
+  async create(c: Context) {
     const user = c.get('user');
     const body = c.req.valid('json');
-    const result = await service.create(body, user.id);
+    const result = await this.service.create(body, user.id);
     return c.json(result, 201);
-  });
+  }
 
-  router.delete('/:id', async (c) => {
+  @Delete('/:id')
+  async remove(c: Context) {
     const user = c.get('user');
     const id = c.req.param('id');
-    await service.delete(id, user.id);
+    await this.service.delete(id, user.id);
     return c.json({ success: true });
-  });
-
-  return router;
+  }
 }
 ```
 
 ## Template: SSE Streaming Controller (for chat)
 ```typescript
 // backend/src/modules/chat/chat.controller.ts
-import { Hono } from 'hono';
+import type { Context } from 'hono';
+import { Controller, Use } from '@asla/hono-decorator';
+import { Post } from '@asla/hono-decorator';
 import { streamSSE } from 'hono/streaming';
 import { zValidator } from '@hono/zod-validator';
 import { ChatService } from './chat.service';
 import { chatSchema } from './chat.schema';
 
-export function createChatRoutes(service: ChatService) {
-  const router = new Hono();
+@Use(zValidator('json', chatSchema))
+@Controller({ basePath: '/api' })
+export class ChatController {
+  constructor(private readonly chatService: ChatService) {}
 
-  router.post('/', zValidator('json', chatSchema), async (c) => {
+  @Post('/chat')
+  async chat(c: Context) {
     const user = c.get('user');
-    const { message, conversationId } = c.req.valid('json');
+    const { message, conversationId } = await c.req.json();
 
     return streamSSE(c, async (stream) => {
       stream.onAbort(() => console.log('Client disconnected'));
-      await service.streamResponse(message, conversationId, user.id, {
+      await this.chatService.streamResponse(message, conversationId, user.id, {
         emit: (event, data) => stream.writeSSE({
           event,
           data: JSON.stringify(data),
         }),
       });
     });
-  });
-
-  return router;
+  }
 }
 ```
 
@@ -191,11 +200,12 @@ export const container = {
 ## Wiring in app.ts
 ```typescript
 // Add to backend/src/app.ts
-import { create<Name>Routes } from './modules/<name>/<name>.controller';
+import { applyController } from '@asla/hono-decorator';
+import { <Name>Controller } from './modules/<name>/<name>.controller';
 
-// Protected routes
-app.use('/api/<name>/*', authGuard);
-app.route('/api/<name>', create<Name>Routes(container.<name>Service));
+// Protected routes (auth middleware applied before controller)
+app.use('/api/<name>s/*', authGuard);
+applyController(app, new <Name>Controller(container.<name>Service));
 ```
 
 ## Auth-Related Patterns
@@ -237,11 +247,14 @@ export const authGuard: MiddlewareHandler = async (c, next) => {
 
 ### Error Handler
 ```typescript
-export const errorHandler = (err: Error, c: Context) => {
+import type { ErrorHandler } from 'hono';
+import { AppError } from '@/common/errors';
+
+export const errorHandler: ErrorHandler = (err, c) => {
   if (err instanceof AppError) {
-    return c.json({ error: err.message, code: err.code }, err.status);
+    return c.json(err.toJSON(), err.status as never);
   }
   console.error('Unhandled error:', err);
-  return c.json({ error: 'Internal server error', code: 'INTERNAL_ERROR' }, 500);
+  return c.json({ error: { message: 'Internal server error', code: 'INTERNAL_ERROR' } }, 500);
 };
 ```
