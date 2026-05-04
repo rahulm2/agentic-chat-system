@@ -1,211 +1,309 @@
-import OpenAI from "openai";
-import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
+import type OpenAI from "openai";
+import type {
+  ChatCompletionMessageParam,
+  ChatCompletionChunk,
+} from "openai/resources/chat/completions";
+import { AppError } from "@/common/errors.ts";
 import type { SSEWriter } from "@/common/types.ts";
-import { TOOL_DEFINITIONS } from "./tools/definitions.ts";
-import type { ToolExecutor } from "./tools/executor.ts";
+import { toolDefinitions } from "./tools/definitions.ts";
+import { executeTool } from "./tools/executor.ts";
 
-const SYSTEM_PROMPT = `You are a helpful healthcare assistant. You can look up drug information using RxNorm and check adverse event reports using openFDA.
-
-When a user asks about a drug:
-1. First use rxnorm_lookup to find the drug's RxCUI identifier
-2. Then use openfda_adverse_events with that RxCUI to find adverse event reports
-
-Always provide clear, well-organized responses. Include disclaimers that users should consult healthcare professionals for medical advice.`;
-
-export interface AgentLoopConfig {
+export interface AgentConfig {
   model: string;
   maxSteps: number;
   timeoutMs: number;
 }
 
-export interface AgentResult {
-  content: string;
-  toolCalls: ToolCallRecord[];
-  inputTokens: number;
-  outputTokens: number;
-}
-
-export interface ToolCallRecord {
+export interface AgentToolCall {
+  toolCallId: string;
   toolName: string;
   args: Record<string, unknown>;
-  result: Record<string, unknown>;
-  status: string;
+  result: unknown;
+  isError: boolean;
   durationMs: number;
 }
 
-export async function runAgentLoop(
-  openai: OpenAI,
-  history: ChatCompletionMessageParam[],
-  toolExecutor: ToolExecutor,
-  config: AgentLoopConfig,
-  writer: SSEWriter,
-): Promise<AgentResult> {
-  const messages: ChatCompletionMessageParam[] = [
-    { role: "system", content: SYSTEM_PROMPT },
-    ...history,
-  ];
+export interface AgentResult {
+  content: string;
+  reasoning: string;
+  toolCalls: AgentToolCall[];
+  usage: { inputTokens: number; outputTokens: number; totalTokens: number };
+  model: string;
+}
 
-  let steps = 0;
-  let totalInputTokens = 0;
-  let totalOutputTokens = 0;
-  let assistantContent = "";
-  const allToolCalls: ToolCallRecord[] = [];
+interface ToolCallBuffer {
+  id: string;
+  name: string;
+  arguments: string;
+}
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), config.timeoutMs);
+export class AgentRunner {
+  constructor(
+    private openai: OpenAI,
+    private config: AgentConfig,
+  ) {}
 
-  try {
-    while (steps < config.maxSteps) {
-      steps++;
+  async run(
+    messages: ChatCompletionMessageParam[],
+    writer: SSEWriter,
+    meta: { conversationId: string; messageId: string },
+  ): Promise<AgentResult> {
+    await writer.writeSSE("stream-start", {
+      conversationId: meta.conversationId,
+      messageId: meta.messageId,
+    });
 
-      const stream = await openai.chat.completions.create(
-        {
-          model: config.model,
-          messages,
-          tools: TOOL_DEFINITIONS,
-          stream: true,
-          stream_options: { include_usage: true },
-        },
-        { signal: controller.signal },
-      );
+    const allToolCalls: AgentToolCall[] = [];
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
+    let finalContent = "";
+    let finalReasoning = "";
+    const startTime = performance.now();
 
-      let finishReason: string | null = null;
-      const toolCallBuffers = new Map<
-        number,
-        { id: string; name: string; arguments: string }
-      >();
-      let currentContent = "";
+    const abortController = new AbortController();
+    const timeout = setTimeout(
+      () => abortController.abort(),
+      this.config.timeoutMs,
+    );
 
-      for await (const chunk of stream) {
-        const choice = chunk.choices?.[0];
+    try {
+      for (let step = 0; step < this.config.maxSteps; step++) {
+        const { content, reasoning, toolCallBuffers, usage, finishReason } =
+          await this.streamStep(messages, writer, abortController.signal);
 
-        if (choice?.delta?.content) {
-          currentContent += choice.delta.content;
-          await writer.writeSSE("text-delta", {
-            content: choice.delta.content,
-          });
+        totalInputTokens += usage.inputTokens;
+        totalOutputTokens += usage.outputTokens;
+
+        if (reasoning) {
+          finalReasoning += (finalReasoning ? "\n" : "") + reasoning;
         }
 
-        if (choice?.delta?.tool_calls) {
-          for (const tc of choice.delta.tool_calls) {
-            if (!toolCallBuffers.has(tc.index)) {
-              toolCallBuffers.set(tc.index, {
-                id: tc.id ?? "",
-                name: tc.function?.name ?? "",
-                arguments: "",
-              });
-            }
-            const buffer = toolCallBuffers.get(tc.index)!;
-            if (tc.id) buffer.id = tc.id;
-            if (tc.function?.name) buffer.name = tc.function.name;
-            if (tc.function?.arguments)
-              buffer.arguments += tc.function.arguments;
-          }
+        if (finishReason === "stop" || toolCallBuffers.length === 0) {
+          finalContent = content;
+          break;
         }
 
-        if (choice?.finish_reason) {
-          finishReason = choice.finish_reason;
-        }
-
-        if (chunk.usage) {
-          totalInputTokens += chunk.usage.prompt_tokens;
-          totalOutputTokens += chunk.usage.completion_tokens;
-        }
-      }
-
-      assistantContent += currentContent;
-
-      if (finishReason === "stop") {
-        messages.push({ role: "assistant", content: currentContent });
-        break;
-      }
-
-      if (finishReason === "tool_calls" && toolCallBuffers.size > 0) {
-        const pendingCalls = Array.from(toolCallBuffers.values()).map((tc) => ({
-          ...tc,
-          parsedArgs: JSON.parse(tc.arguments) as Record<string, unknown>,
-        }));
-
-        messages.push({
-          role: "assistant",
-          content: currentContent || null,
-          tool_calls: pendingCalls.map((tc) => ({
+        // Execute tool calls
+        const assistantMessage: ChatCompletionMessageParam = {
+          role: "assistant" as const,
+          content: content || null,
+          tool_calls: toolCallBuffers.map((tc) => ({
             id: tc.id,
             type: "function" as const,
             function: { name: tc.name, arguments: tc.arguments },
           })),
-        });
+        };
+        messages.push(assistantMessage);
 
-        // Emit start events
-        for (const tc of pendingCalls) {
-          await writer.writeSSE("tool-call-start", {
-            toolCallId: tc.id,
-            toolName: tc.name,
-            args: tc.parsedArgs,
+        const toolResults = await this.executeToolCalls(
+          toolCallBuffers,
+          writer,
+        );
+        allToolCalls.push(...toolResults);
+
+        for (const result of toolResults) {
+          messages.push({
+            role: "tool" as const,
+            tool_call_id: result.toolCallId,
+            content: JSON.stringify(result.result),
+          });
+        }
+      }
+    } catch (err) {
+      if ((err as Error).name === "AbortError") {
+        const timeoutError = new AppError(
+          "AI request timed out",
+          "AI_TIMEOUT",
+          504,
+        );
+        await writer.writeSSE("error", {
+          message: timeoutError.message,
+          code: timeoutError.code,
+        });
+        throw timeoutError;
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    const latencyMs = Math.round(performance.now() - startTime);
+
+    await writer.writeSSE("metadata", {
+      model: this.config.model,
+      inputTokens: totalInputTokens,
+      outputTokens: totalOutputTokens,
+      latencyMs,
+      estimatedCost: this.estimateCost(
+        this.config.model,
+        totalInputTokens,
+        totalOutputTokens,
+      ),
+    });
+    await writer.writeSSE("done", {});
+
+    return {
+      content: finalContent,
+      reasoning: finalReasoning,
+      toolCalls: allToolCalls,
+      usage: {
+        inputTokens: totalInputTokens,
+        outputTokens: totalOutputTokens,
+        totalTokens: totalInputTokens + totalOutputTokens,
+      },
+      model: this.config.model,
+    };
+  }
+
+  private async streamStep(
+    messages: ChatCompletionMessageParam[],
+    writer: SSEWriter,
+    signal: AbortSignal,
+  ) {
+    const stream = await this.openai.chat.completions.create(
+      {
+        model: this.config.model,
+        messages,
+        tools: toolDefinitions,
+        stream: true,
+        stream_options: { include_usage: true },
+      },
+      { signal },
+    );
+
+    let content = "";
+    let reasoning = "";
+    const toolCallBuffers = new Map<number, ToolCallBuffer>();
+    let finishReason = "";
+    let inputTokens = 0;
+    let outputTokens = 0;
+
+    for await (const chunk of stream) {
+      const choice = chunk.choices[0];
+
+      if (choice) {
+        const delta = choice.delta;
+
+        if (delta.content) {
+          content += delta.content;
+          await writer.writeSSE("text-delta", { content: delta.content });
+        }
+
+        // Handle reasoning (if model supports it)
+        const deltaAny = delta as Record<string, unknown>;
+        if (typeof deltaAny["reasoning"] === "string" && deltaAny["reasoning"]) {
+          reasoning += deltaAny["reasoning"];
+          await writer.writeSSE("reasoning", {
+            content: deltaAny["reasoning"],
           });
         }
 
-        // Execute tools in parallel
-        const settled = await Promise.allSettled(
-          pendingCalls.map(async (tc) => {
-            const toolStart = Date.now();
-            const result = await toolExecutor.execute(tc.name, tc.parsedArgs);
-            const durationMs = Date.now() - toolStart;
-            return { id: tc.id, toolName: tc.name, args: tc.parsedArgs, result, durationMs };
-          }),
-        );
-
-        // Emit results and append to messages
-        for (const entry of settled) {
-          if (entry.status === "fulfilled") {
-            const { id, toolName, args, result, durationMs } = entry.value;
-            const isError = "error" in result;
-
-            await writer.writeSSE("tool-call-result", {
-              toolCallId: id,
-              result,
-              isError,
-            });
-
-            allToolCalls.push({ toolName, args, result, status: isError ? "error" : "success", durationMs });
-            messages.push({ role: "tool", tool_call_id: id, content: JSON.stringify(result) });
-          } else {
-            const idx = settled.indexOf(entry);
-            const tc = pendingCalls[idx]!;
-
-            await writer.writeSSE("tool-call-result", {
-              toolCallId: tc.id,
-              result: { error: String(entry.reason) },
-              isError: true,
-            });
-
-            allToolCalls.push({ toolName: tc.name, args: tc.parsedArgs, result: { error: String(entry.reason) }, status: "error", durationMs: 0 });
-            messages.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify({ error: String(entry.reason) }) });
+        // Accumulate tool call chunks
+        if (delta.tool_calls) {
+          for (const tc of delta.tool_calls) {
+            const existing = toolCallBuffers.get(tc.index);
+            if (existing) {
+              existing.arguments += tc.function?.arguments ?? "";
+            } else {
+              toolCallBuffers.set(tc.index, {
+                id: tc.id ?? "",
+                name: tc.function?.name ?? "",
+                arguments: tc.function?.arguments ?? "",
+              });
+            }
           }
         }
 
-        continue;
+        if (choice.finish_reason) {
+          finishReason = choice.finish_reason;
+        }
       }
 
-      break;
+      // Usage comes in the final chunk (choices is empty)
+      if (chunk.usage) {
+        inputTokens = chunk.usage.prompt_tokens;
+        outputTokens = chunk.usage.completion_tokens;
+      }
     }
-  } catch (err: unknown) {
-    if (controller.signal.aborted) {
-      await writer.writeSSE("error", { message: "AI request timed out", code: "AI_TIMEOUT" });
-    } else {
-      await writer.writeSSE("error", {
-        message: err instanceof Error ? err.message : "Agent loop error",
-        code: "AGENT_ERROR",
-      });
-    }
-  } finally {
-    clearTimeout(timeout);
+
+    return {
+      content,
+      reasoning,
+      toolCallBuffers: Array.from(toolCallBuffers.values()),
+      usage: { inputTokens, outputTokens },
+      finishReason,
+    };
   }
 
-  return {
-    content: assistantContent,
-    toolCalls: allToolCalls,
-    inputTokens: totalInputTokens,
-    outputTokens: totalOutputTokens,
-  };
+  private async executeToolCalls(
+    buffers: ToolCallBuffer[],
+    writer: SSEWriter,
+  ): Promise<AgentToolCall[]> {
+    const results: AgentToolCall[] = [];
+
+    // Execute all tool calls in parallel (OpenAI may return multiple)
+    const executions = buffers.map(async (buffer) => {
+      let args: Record<string, unknown>;
+      try {
+        args = JSON.parse(buffer.arguments) as Record<string, unknown>;
+      } catch {
+        args = {};
+      }
+
+      await writer.writeSSE("tool-call-start", {
+        toolCallId: buffer.id,
+        toolName: buffer.name,
+        args,
+      });
+
+      const result = await executeTool(buffer.name, args);
+
+      await writer.writeSSE("tool-call-result", {
+        toolCallId: buffer.id,
+        result: result.result,
+        isError: result.isError,
+      });
+
+      return {
+        toolCallId: buffer.id,
+        toolName: buffer.name,
+        args,
+        result: result.result,
+        isError: result.isError,
+        durationMs: result.durationMs,
+      };
+    });
+
+    const settled = await Promise.allSettled(executions);
+    for (const outcome of settled) {
+      if (outcome.status === "fulfilled") {
+        results.push(outcome.value);
+      } else {
+        // Feed errors back — executeTool already catches, but just in case
+        results.push({
+          toolCallId: "unknown",
+          toolName: "unknown",
+          args: {},
+          result: { error: outcome.reason?.message ?? "Tool execution failed" },
+          isError: true,
+          durationMs: 0,
+        });
+      }
+    }
+
+    return results;
+  }
+
+  private estimateCost(
+    model: string,
+    inputTokens: number,
+    outputTokens: number,
+  ): number {
+    const rates: Record<string, { input: number; output: number }> = {
+      "gpt-4o": { input: 2.5 / 1_000_000, output: 10 / 1_000_000 },
+      "gpt-4o-mini": { input: 0.15 / 1_000_000, output: 0.6 / 1_000_000 },
+    };
+    const rate = rates[model] ?? rates["gpt-4o"]!;
+    return inputTokens * rate.input + outputTokens * rate.output;
+  }
 }

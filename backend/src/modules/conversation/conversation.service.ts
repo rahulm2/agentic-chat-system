@@ -3,36 +3,31 @@ import type { ChatCompletionMessageParam } from "openai/resources/chat/completio
 import { AppError } from "@/common/errors.ts";
 import type { SSEWriter } from "@/common/types.ts";
 import type { MessageService } from "@/modules/message/message.service.ts";
-import { runAgentLoop } from "@/agent/agent-loop.ts";
-import { ToolExecutor } from "@/agent/tools/executor.ts";
+import { AgentRunner } from "@/agent/agent-loop.ts";
+import type { AgentConfig } from "@/agent/agent-loop.ts";
 import type { ConversationRepository } from "./conversation.repository.ts";
 import type { ChatRequest } from "./conversation.schema.ts";
 
-export interface AgentConfig {
+export interface ConversationServiceConfig {
   openaiApiKey: string;
   model: string;
   maxSteps: number;
   timeoutMs: number;
-  openfdaApiKey?: string;
 }
 
-const COST_RATES: Record<string, { input: number; output: number }> = {
-  "gpt-4o": { input: 2.5 / 1_000_000, output: 10 / 1_000_000 },
-  "gpt-4o-mini": { input: 0.15 / 1_000_000, output: 0.6 / 1_000_000 },
-};
-
 export class ConversationService {
-  private openai: OpenAI;
-  private toolExecutor: ToolExecutor;
+  private agentRunner: AgentRunner;
 
   constructor(
     private repository: ConversationRepository,
     private messageService: MessageService,
-    private config: AgentConfig,
+    config: ConversationServiceConfig,
   ) {
-    this.openai = new OpenAI({ apiKey: config.openaiApiKey });
-    this.toolExecutor = new ToolExecutor({
-      openfdaApiKey: config.openfdaApiKey,
+    const openai = new OpenAI({ apiKey: config.openaiApiKey });
+    this.agentRunner = new AgentRunner(openai, {
+      model: config.model,
+      maxSteps: config.maxSteps,
+      timeoutMs: config.timeoutMs,
     });
   }
 
@@ -71,8 +66,6 @@ export class ConversationService {
     request: ChatRequest,
     writer: SSEWriter,
   ): Promise<void> {
-    const startTime = Date.now();
-
     // Get or create conversation
     let conversationId = request.conversationId;
     if (!conversationId) {
@@ -94,56 +87,40 @@ export class ConversationService {
       content: msg.content ?? "",
     }));
 
-    await writer.writeSSE("stream-start", {
+    // Run agent — handles streaming, tool calls, metadata, and done events
+    const agentResult = await this.agentRunner.run(messages, writer, {
       conversationId,
       messageId: userMessage.id,
     });
-
-    // Run agent loop — writes SSE events directly to the client
-    const agentResult = await runAgentLoop(
-      this.openai,
-      messages,
-      this.toolExecutor,
-      {
-        model: this.config.model,
-        maxSteps: this.config.maxSteps,
-        timeoutMs: this.config.timeoutMs,
-      },
-      writer,
-    );
 
     // Persist assistant message
     if (agentResult.content) {
       if (agentResult.toolCalls.length > 0) {
         await this.messageService.createWithToolCalls(
-          { conversationId, role: "assistant", content: agentResult.content },
-          agentResult.toolCalls,
+          {
+            conversationId,
+            role: "assistant",
+            content: agentResult.content,
+            reasoning: agentResult.reasoning || undefined,
+          },
+          agentResult.toolCalls.map((tc) => ({
+            toolName: tc.toolName,
+            args: tc.args,
+            result: tc.result as Record<string, unknown>,
+            status: tc.isError ? "error" : "success",
+            durationMs: tc.durationMs,
+          })),
         );
       } else {
         await this.messageService.create({
           conversationId,
           role: "assistant",
           content: agentResult.content,
+          reasoning: agentResult.reasoning || undefined,
         });
       }
     }
 
-    // Emit metadata + done
-    const latencyMs = Date.now() - startTime;
-    const rate = COST_RATES[this.config.model] ?? COST_RATES["gpt-4o"]!;
-    const estimatedCost =
-      agentResult.inputTokens * rate!.input +
-      agentResult.outputTokens * rate!.output;
-
-    await writer.writeSSE("metadata", {
-      model: this.config.model,
-      inputTokens: agentResult.inputTokens,
-      outputTokens: agentResult.outputTokens,
-      latencyMs,
-      estimatedCost,
-    });
-
-    await writer.writeSSE("done", {});
     writer.close();
   }
 }

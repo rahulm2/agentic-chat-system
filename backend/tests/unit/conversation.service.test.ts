@@ -2,10 +2,10 @@ import { describe, it, expect, beforeEach } from "bun:test";
 import { ConversationService } from "@/modules/conversation/conversation.service.ts";
 import type { ConversationRepository } from "@/modules/conversation/conversation.repository.ts";
 import type { MessageService } from "@/modules/message/message.service.ts";
-import type { AgentConfig } from "@/modules/conversation/conversation.service.ts";
+import type { ConversationServiceConfig } from "@/modules/conversation/conversation.service.ts";
 
 const mockMessageService = {} as MessageService;
-const mockConfig: AgentConfig = {
+const mockConfig: ConversationServiceConfig = {
   openaiApiKey: "test-key",
   model: "gpt-4o",
   maxSteps: 6,

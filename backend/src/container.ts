@@ -36,7 +36,6 @@ export function createContainer(env: {
       model: process.env.AI_MODEL ?? "gpt-4o",
       maxSteps: Number(process.env.MAX_AGENT_STEPS ?? 6),
       timeoutMs: Number(process.env.AI_TIMEOUT_MS ?? 30000),
-      openfdaApiKey: process.env.OPENFDA_API_KEY,
     },
   );
 
