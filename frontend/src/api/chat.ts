@@ -18,7 +18,7 @@ export async function sendChatMessage(params: SendMessageParams): Promise<Respon
     body.conversationId = params.conversationId;
   }
 
-  const response = await apiFetch('/api/chat', {
+  const response = await apiFetch('/api/conversations/completions', {
     method: 'POST',
     body: JSON.stringify(body),
   });
