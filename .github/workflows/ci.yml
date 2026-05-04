@@ -84,3 +84,63 @@ jobs:
       - name: Run tests
         working-directory: frontend
         run: bun run test
+
+  docker:
+    name: Docker — Build, Migrate & Health Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Create a minimal backend/.env so docker compose can start the backend.
+      # OPENAI_API_KEY is a placeholder — the health check does not call OpenAI.
+      # Use the OPENAI_API_KEY secret if available; otherwise fall back to a stub.
+      - name: Create backend .env for Docker
+        run: |
+          cat > backend/.env <<EOF
+          OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY || 'sk-placeholder-ci-only' }}
+          JWT_SECRET=ci-test-jwt-secret-that-is-at-least-32-chars
+          EOF
+
+      - name: Build and start stack
+        run: docker compose up --build -d
+
+      - name: Wait for backend health check
+        run: |
+          echo "Waiting for backend to become healthy..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3000/health; then
+              echo ""
+              echo "Backend is healthy after ${i} attempt(s)"
+              exit 0
+            fi
+            echo "Attempt $i/30 — retrying in 3s..."
+            sleep 3
+          done
+          echo "Health check timed out after 90s"
+          docker compose logs backend
+          exit 1
+
+      - name: Smoke test — auth endpoints
+        run: |
+          # Register should succeed (seed user already created by entrypoint)
+          # Login with the seeded test account
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
+            -X POST http://localhost:3000/api/auth/login \
+            -H "Content-Type: application/json" \
+            -d '{"email":"test@example.com","password":"password123"}')
+          if [ "$STATUS" = "200" ]; then
+            echo "Login smoke test passed (HTTP $STATUS)"
+          else
+            echo "Login smoke test FAILED (HTTP $STATUS)"
+            docker compose logs backend
+            exit 1
+          fi
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
