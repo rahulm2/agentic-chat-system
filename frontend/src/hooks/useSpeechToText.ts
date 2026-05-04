@@ -46,6 +46,12 @@ export function useSpeechToText({ onTranscript, onInterim, lang = 'en-US' }: Use
   const finalTranscriptRef = useRef('');
   const submittedRef = useRef(false);
 
+  // Keep callbacks in refs so the recognition closure always calls the latest version
+  const onTranscriptRef = useRef(onTranscript);
+  const onInterimRef = useRef(onInterim);
+  useEffect(() => { onTranscriptRef.current = onTranscript; }, [onTranscript]);
+  useEffect(() => { onInterimRef.current = onInterim; }, [onInterim]);
+
   const clearSilenceTimer = useCallback(() => {
     if (silenceTimerRef.current) {
       clearTimeout(silenceTimerRef.current);
@@ -93,7 +99,7 @@ export function useSpeechToText({ onTranscript, onInterim, lang = 'en-US' }: Use
       }
 
       const currentText = finalTranscriptRef.current + interim;
-      onInterim?.(currentText);
+      onInterimRef.current?.(currentText);
 
       // Reset silence timer on any speech activity
       clearSilenceTimer();
@@ -102,7 +108,7 @@ export function useSpeechToText({ onTranscript, onInterim, lang = 'en-US' }: Use
         const transcript = finalTranscriptRef.current.trim();
         if (transcript) {
           submittedRef.current = true;
-          onTranscript(transcript);
+          onTranscriptRef.current(transcript);
         }
         stop();
       }, SILENCE_TIMEOUT_MS);
@@ -120,7 +126,7 @@ export function useSpeechToText({ onTranscript, onInterim, lang = 'en-US' }: Use
     recognitionRef.current = recognition;
     recognition.start();
     setIsListening(true);
-  }, [isSupported, lang, onTranscript, onInterim, clearSilenceTimer, stop]);
+  }, [isSupported, lang, clearSilenceTimer, stop]);
 
   const toggle = useCallback(() => {
     if (isListening) {
