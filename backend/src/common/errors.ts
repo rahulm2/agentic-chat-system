@@ -10,7 +10,9 @@ export type ErrorCode =
   | "AGENT_ERROR"
   | "TOOL_ERROR"
   | "AI_TIMEOUT"
-  | "STREAM_ERROR";
+  | "STREAM_ERROR"
+  | "EMAIL_ALREADY_EXISTS"
+  | "INVALID_CREDENTIALS";
 
 export class AppError extends Error {
   constructor(

@@ -7,26 +7,18 @@ import { requestLogger } from "@/middleware/request-logger.ts";
 import { HealthController } from "@/modules/health/health.controller.ts";
 import { createContainer } from "@/container.ts";
 
-const env = {
-  DATABASE_URL: process.env.DATABASE_URL ?? "",
-  JWT_SECRET: process.env.JWT_SECRET ?? "",
-};
-
-const hasDb = env.DATABASE_URL.length > 0 && env.JWT_SECRET.length > 0;
-
-export const app = new Hono();
-
-// Global middleware
-app.use("*", cors());
-app.use("*", requestLogger);
-
-// Controllers
-applyController(app, new HealthController());
-
-if (hasDb) {
+export function createApp(env: { DATABASE_URL: string; JWT_SECRET: string }) {
   const container = createContainer(env);
+  const app = new Hono();
 
-  // Auth guard on protected routes (must be before controllers)
+  // Global middleware
+  app.use("*", cors());
+  app.use("*", requestLogger);
+
+  // Health (public)
+  applyController(app, new HealthController());
+
+  // Auth guard on protected routes
   app.use("/api/auth/me", container.guard);
   app.use("/api/conversations/*", container.guard);
   app.use("/api/conversations", container.guard);
@@ -36,8 +28,10 @@ if (hasDb) {
   applyController(app, container.authController);
   applyController(app, container.conversationController);
   applyController(app, container.messageController);
-}
 
-// Error handling
-app.onError(errorHandler);
-app.notFound(notFound);
+  // Error handling
+  app.onError(errorHandler);
+  app.notFound(notFound);
+
+  return { app, container };
+}
