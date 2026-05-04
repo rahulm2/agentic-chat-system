@@ -147,6 +147,12 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         error: null,
       };
 
+    case 'DELETE_MESSAGE':
+      return {
+        ...state,
+        messages: state.messages.filter((msg) => msg.id !== action.payload.messageId),
+      };
+
     case 'CLEAR_CONVERSATION':
       return { ...initialChatState };
 

@@ -1,26 +1,51 @@
 import { memo } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
+import MessageContent from './MessageContent';
 import {
   colorSemantics,
   spacing,
   typographyPresets,
   borderSemantics,
 } from '../design-system';
+import type { ChatMessage, MessageMetadata, MessageRole } from '../context/types';
 
-export interface MessageBubbleProps {
-  id: string;
-  role: 'user' | 'assistant' | 'system';
-  content: string;
+// New props shape — pass a full ChatMessage object
+interface MessageBubbleNewProps {
+  message: ChatMessage;
   isStreaming?: boolean;
+  metadata?: MessageMetadata | null;
+  onRegenerate?: () => void;
+  onDelete?: () => void;
+  // Ensure old flat props are not present in this shape
+  id?: never;
+  role?: never;
+  content?: never;
 }
 
-const MessageBubble = memo(function MessageBubble({
-  role,
-  content,
-  isStreaming,
-}: MessageBubbleProps) {
-  const isUser = role === 'user';
+// Legacy props shape — flat id/role/content (kept for backward-compatibility with existing tests)
+interface MessageBubbleLegacyProps {
+  id: string;
+  role: MessageRole;
+  content: string;
+  isStreaming?: boolean;
+  metadata?: MessageMetadata | null;
+  onRegenerate?: () => void;
+  onDelete?: () => void;
+  message?: never;
+}
+
+export type MessageBubbleProps = MessageBubbleNewProps | MessageBubbleLegacyProps;
+
+const MessageBubble = memo(function MessageBubble(props: MessageBubbleProps) {
+  // Normalise to a ChatMessage regardless of which props shape was used
+  const message: ChatMessage =
+    props.message !== undefined
+      ? props.message
+      : { id: props.id, role: props.role, content: props.content };
+
+  const { isStreaming, metadata, onRegenerate, onDelete } = props;
+  const isUser = message.role === 'user';
 
   return (
     <Box
@@ -33,6 +58,9 @@ const MessageBubble = memo(function MessageBubble({
         px: `${spacing.layout.sm}px`,
         flexDirection: isUser ? 'row-reverse' : 'row',
         alignItems: 'flex-start',
+        '&:hover .message-actions': {
+          opacity: 1,
+        },
       }}
     >
       {/* Avatar */}
@@ -80,37 +108,13 @@ const MessageBubble = memo(function MessageBubble({
             : {}),
         }}
       >
-        <Typography
-          component="div"
-          sx={{
-            ...typographyPresets.body.md,
-            color: colorSemantics.text.primary,
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-            lineHeight: 1.7,
-          }}
-        >
-          {content}
-          {isStreaming && (
-            <Box
-              component="span"
-              sx={{
-                display: 'inline-block',
-                width: 2,
-                height: 18,
-                ml: '2px',
-                backgroundColor: colorSemantics.text.primary,
-                borderRadius: 1,
-                animation: 'blink 0.8s step-end infinite',
-                verticalAlign: 'text-bottom',
-                '@keyframes blink': {
-                  '0%, 100%': { opacity: 1 },
-                  '50%': { opacity: 0 },
-                },
-              }}
-            />
-          )}
-        </Typography>
+        <MessageContent
+          message={message}
+          isStreaming={isStreaming}
+          metadata={metadata}
+          onRegenerate={onRegenerate}
+          onDelete={onDelete}
+        />
       </Box>
     </Box>
   );

@@ -44,8 +44,12 @@ export interface ConversationDetail {
   messages: ConversationMessage[];
 }
 
-export async function fetchConversations(): Promise<ConversationListResponse> {
-  const response = await apiFetch('/api/conversations');
+export async function fetchConversations(params?: { limit?: number; offset?: number }): Promise<ConversationListResponse> {
+  const query = new URLSearchParams();
+  if (params?.limit !== undefined) query.set('limit', String(params.limit));
+  if (params?.offset !== undefined) query.set('offset', String(params.offset));
+  const qs = query.toString();
+  const response = await apiFetch(`/api/conversations${qs ? '?' + qs : ''}`);
   if (!response.ok) {
     throw new Error(`Failed to fetch conversations: ${response.status}`);
   }
@@ -66,5 +70,14 @@ export async function deleteConversation(id: string): Promise<void> {
   });
   if (!response.ok) {
     throw new Error(`Failed to delete conversation: ${response.status}`);
+  }
+}
+
+export async function deleteMessage(id: string): Promise<void> {
+  const response = await apiFetch(`/api/messages/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to delete message: ${response.status}`);
   }
 }

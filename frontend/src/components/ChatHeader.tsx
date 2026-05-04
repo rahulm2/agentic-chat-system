@@ -4,6 +4,8 @@ import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import LogoutIcon from '@mui/icons-material/LogoutRounded';
 import AddIcon from '@mui/icons-material/AddRounded';
+import MenuIcon from '@mui/icons-material/MenuRounded';
+import MenuOpenIcon from '@mui/icons-material/MenuOpenRounded';
 import {
   colorSemantics,
   spacing,
@@ -15,9 +17,11 @@ import {
 interface ChatHeaderProps {
   onLogout: () => void;
   onNewChat: () => void;
+  sidebarOpen: boolean;
+  onToggleSidebar: () => void;
 }
 
-export default function ChatHeader({ onLogout, onNewChat }: ChatHeaderProps) {
+export default function ChatHeader({ onLogout, onNewChat, sidebarOpen, onToggleSidebar }: ChatHeaderProps) {
   return (
     <Box
       sx={{
@@ -33,6 +37,26 @@ export default function ChatHeader({ onLogout, onNewChat }: ChatHeaderProps) {
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: `${spacing.gap.sm}px` }}>
+        <Tooltip title={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}>
+          <IconButton
+            onClick={onToggleSidebar}
+            size="small"
+            aria-label={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
+            sx={{
+              color: colorSemantics.text.secondary,
+              '&:hover': {
+                backgroundColor: colorSemantics.background.muted,
+                color: colorSemantics.text.primary,
+              },
+            }}
+          >
+            {sidebarOpen ? (
+              <MenuOpenIcon fontSize="small" />
+            ) : (
+              <MenuIcon fontSize="small" />
+            )}
+          </IconButton>
+        </Tooltip>
         <Box
           sx={{
             width: 32,
