@@ -110,30 +110,61 @@ const MarkdownRenderer = memo(function MarkdownRenderer({
         },
       }}
     >
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeHighlight]}
-      >
-        {content}
-      </ReactMarkdown>
-      {isStreaming && (
+      {/* When content is empty and streaming, render cursor in a proper line-height
+          context so it aligns vertically with the assistant avatar */}
+      {isStreaming && !content ? (
         <Box
-          component="span"
           sx={{
-            display: 'inline-block',
-            width: 2,
-            height: 16,
-            ml: '2px',
-            backgroundColor: colorSemantics.text.primary,
-            borderRadius: 1,
-            verticalAlign: 'text-bottom',
-            animation: 'blink 0.8s step-end infinite',
-            '@keyframes blink': {
-              '0%, 100%': { opacity: 1 },
-              '50%': { opacity: 0 },
-            },
+            display: 'flex',
+            alignItems: 'center',
+            height: '28px',
+            mt: '4px',
           }}
-        />
+        >
+          <Box
+            component="span"
+            sx={{
+              display: 'inline-block',
+              width: 2,
+              height: 16,
+              backgroundColor: colorSemantics.text.primary,
+              borderRadius: 1,
+              animation: 'blink 0.8s step-end infinite',
+              '@keyframes blink': {
+                '0%, 100%': { opacity: 1 },
+                '50%': { opacity: 0 },
+              },
+            }}
+          />
+        </Box>
+      ) : (
+        <>
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            rehypePlugins={[rehypeHighlight]}
+          >
+            {content}
+          </ReactMarkdown>
+          {isStreaming && (
+            <Box
+              component="span"
+              sx={{
+                display: 'inline-block',
+                width: 2,
+                height: 16,
+                ml: '2px',
+                backgroundColor: colorSemantics.text.primary,
+                borderRadius: 1,
+                verticalAlign: 'text-bottom',
+                animation: 'blink 0.8s step-end infinite',
+                '@keyframes blink': {
+                  '0%, 100%': { opacity: 1 },
+                  '50%': { opacity: 0 },
+                },
+              }}
+            />
+          )}
+        </>
       )}
     </Box>
   );

@@ -3,6 +3,7 @@ import {
   fetchConversations,
   fetchConversation,
   deleteConversation,
+  deleteMessage,
 } from '../api/conversations';
 
 export const conversationKeys = {
@@ -34,5 +35,11 @@ export function useDeleteConversation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: conversationKeys.list() });
     },
+  });
+}
+
+export function useDeleteMessage() {
+  return useMutation({
+    mutationFn: deleteMessage,
   });
 }

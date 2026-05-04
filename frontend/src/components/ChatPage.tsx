@@ -5,8 +5,7 @@ import MessageList from './MessageList';
 import { useMessages, useStreamingStatus, useChatDispatch, useConversation } from '../context';
 import { useSSEStream } from '../hooks/useSSEStream';
 import { useLogout } from '../hooks/useAuth';
-import { useMutation } from '@tanstack/react-query';
-import { deleteMessage } from '../api/conversations';
+import { useDeleteMessage } from '../hooks/useConversations';
 import { colorSemantics } from '../design-system';
 
 export default function ChatPage() {
@@ -33,15 +32,13 @@ export default function ChatPage() {
     dispatch({ type: 'CLEAR_CONVERSATION' });
   };
 
-  const deleteMutation = useMutation({
-    mutationFn: (messageId: string) => deleteMessage(messageId),
-  });
+  const deleteMessageMutation = useDeleteMessage();
 
   const handleDeleteMessage = (messageId: string) => {
     // Optimistically remove from local state immediately
     dispatch({ type: 'DELETE_MESSAGE', payload: { messageId } });
     // Fire-and-forget API call (local IDs like `user-{ts}` will 404 silently)
-    deleteMutation.mutate(messageId);
+    deleteMessageMutation.mutate(messageId);
   };
 
   const isStreaming = streamingStatus === 'streaming' || isPending;
