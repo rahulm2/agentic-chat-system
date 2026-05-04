@@ -1,5 +1,5 @@
 import { useRef, useCallback } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { sendChatMessage } from '../api/chat';
 import { parseSSEEvents, parseSSEData } from '../utils/sse-parser';
 import { conversationKeys } from './useConversations';
@@ -57,7 +57,7 @@ export function useSSEStream({ dispatch, conversationId }: UseSSEStreamOptions) 
           if (!part.trim()) continue;
           const events = parseSSEEvents(part + '\n\n');
           for (const sseEvent of events) {
-            handleSSEEvent(sseEvent.event, sseEvent.data, dispatch);
+            handleSSEEvent(sseEvent.event, sseEvent.data, dispatch, queryClient);
           }
         }
       }
@@ -65,7 +65,7 @@ export function useSSEStream({ dispatch, conversationId }: UseSSEStreamOptions) 
       if (buffer.trim()) {
         const events = parseSSEEvents(buffer);
         for (const sseEvent of events) {
-          handleSSEEvent(sseEvent.event, sseEvent.data, dispatch);
+          handleSSEEvent(sseEvent.event, sseEvent.data, dispatch, queryClient);
         }
       }
     },
@@ -96,7 +96,8 @@ export function useSSEStream({ dispatch, conversationId }: UseSSEStreamOptions) 
 function handleSSEEvent(
   event: string,
   data: string,
-  dispatch: React.Dispatch<ChatAction>
+  dispatch: React.Dispatch<ChatAction>,
+  queryClient: QueryClient,
 ): void {
   switch (event) {
     case 'stream-start': {
@@ -144,6 +145,11 @@ function handleSSEEvent(
     case 'error': {
       const parsed = parseSSEData<{ message: string }>(data);
       dispatch({ type: 'STREAM_ERROR', payload: { message: parsed?.message ?? 'Unknown error' } });
+      break;
+    }
+    case 'title': {
+      // Title generated — refresh sidebar conversation list
+      queryClient.invalidateQueries({ queryKey: conversationKeys.list() });
       break;
     }
     case 'done': {

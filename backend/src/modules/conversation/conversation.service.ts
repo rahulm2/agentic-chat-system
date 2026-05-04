@@ -62,7 +62,7 @@ export class ConversationService {
     await this.repository.delete(id);
   }
 
-  private async generateTitle(userMessage: string): Promise<string> {
+  private async generateTitle(userMessage: string, assistantResponse: string): Promise<string> {
     try {
       const response = await this.openai.chat.completions.create({
         model: "gpt-4o-mini",
@@ -70,17 +70,23 @@ export class ConversationService {
           {
             role: "system",
             content:
-              "Generate a short conversation title (max 6 words) for the following user message. " +
+              "Generate a short conversation title (max 6 words) based on the user message and assistant response. " +
               "Return ONLY the title, no quotes, no punctuation at the end.",
           },
-          { role: "user", content: userMessage },
+          {
+            role: "user",
+            content: `User: ${userMessage}\n\nAssistant: ${assistantResponse.slice(0, 200)}`,
+          },
         ],
         max_tokens: 20,
         temperature: 0.7,
       });
       return response.choices[0]?.message?.content?.trim() || "New conversation";
     } catch {
-      return "New conversation";
+      // Fallback: truncate user message
+      const cleaned = userMessage.trim().replace(/\n+/g, " ");
+      if (cleaned.length <= 40) return cleaned;
+      return cleaned.slice(0, 40).replace(/\s+\S*$/, "") + "...";
     }
   }
 
@@ -103,13 +109,6 @@ export class ConversationService {
       role: "user",
       content: request.message,
     });
-
-    // Generate title for new conversations (fire-and-forget, don't block streaming)
-    if (isNewConversation) {
-      this.generateTitle(request.message).then((title) =>
-        this.repository.updateTitle(conversationId!, title),
-      );
-    }
 
     // Build history for the agent
     const history = await this.messageService.findByConversationId(conversationId);
@@ -150,6 +149,13 @@ export class ConversationService {
           reasoning: agentResult.reasoning || undefined,
         });
       }
+    }
+
+    // Generate and persist title for new conversations, emit via SSE
+    if (isNewConversation && agentResult.content) {
+      const title = await this.generateTitle(request.message, agentResult.content);
+      await this.repository.updateTitle(conversationId, title);
+      await writer.writeSSE("title", { title, conversationId });
     }
 
     writer.close();
