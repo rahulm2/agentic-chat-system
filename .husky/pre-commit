@@ -1,1 +1,2 @@
 cd backend && bun run typecheck && bun test
+cd ../frontend && bun run typecheck && bun run test
