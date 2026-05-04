@@ -15,6 +15,8 @@ interface MessageContentProps {
   metadata?: MessageMetadata | null;
   onRegenerate?: () => void;
   onDelete?: () => void;
+  onPlayAudio?: () => void;
+  isPlayingAudio?: boolean;
 }
 
 const MessageContent = memo(function MessageContent({
@@ -23,6 +25,8 @@ const MessageContent = memo(function MessageContent({
   metadata,
   onRegenerate,
   onDelete,
+  onPlayAudio,
+  isPlayingAudio,
 }: MessageContentProps) {
   const isAssistant = message.role === 'assistant';
 
@@ -80,6 +84,8 @@ const MessageContent = memo(function MessageContent({
         content={message.content}
         onRegenerate={isAssistant ? onRegenerate : undefined}
         onDelete={onDelete}
+        onPlayAudio={isAssistant ? onPlayAudio : undefined}
+        isPlayingAudio={isPlayingAudio}
       />
     </Box>
   );

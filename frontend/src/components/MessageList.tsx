@@ -14,6 +14,8 @@ export interface MessageListProps {
   onRegenerate?: (messageId: string) => void;
   onDeleteMessage?: (messageId: string) => void;
   isPending?: boolean;
+  onPlayAudio?: (messageId: string, content: string) => void;
+  playingMessageId?: string | null;
 }
 
 export default function MessageList({
@@ -24,6 +26,8 @@ export default function MessageList({
   onRegenerate,
   onDeleteMessage,
   isPending,
+  onPlayAudio,
+  playingMessageId,
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -70,6 +74,12 @@ export default function MessageList({
               : undefined
           }
           onDelete={onDeleteMessage ? () => onDeleteMessage(msg.id) : undefined}
+          onPlayAudio={
+            onPlayAudio && msg.role === 'assistant' && msg.content
+              ? () => onPlayAudio(msg.id, msg.content)
+              : undefined
+          }
+          isPlayingAudio={playingMessageId === msg.id}
         />
       ))}
 

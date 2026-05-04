@@ -23,7 +23,7 @@ export default function ChatPage() {
   const dispatch = useChatDispatch();
   const { currentConversationId, metadata } = useConversation();
   const logoutMutation = useLogout();
-  const { voiceEnabled, toggleVoice, play: playTts } = useTextToSpeech();
+  const { voiceEnabled, toggleVoice, play: playTts, playingMessageId, stopPlayback } = useTextToSpeech();
 
   // Pending conversation to load (sidebar selection or initial hydration)
   const [pendingConvId, setPendingConvId] = useState<string | null>(null);
@@ -152,6 +152,14 @@ export default function ChatPage() {
           metadata={metadata}
           onDeleteMessage={handleDeleteMessage}
           isPending={isPending}
+          onPlayAudio={(messageId, content) => {
+            if (playingMessageId === messageId) {
+              stopPlayback();
+            } else {
+              playTts(content, messageId);
+            }
+          }}
+          playingMessageId={playingMessageId}
         />
         <ChatInput onSend={handleSend} disabled={isStreaming} />
       </Box>
