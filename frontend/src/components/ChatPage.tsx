@@ -12,7 +12,7 @@ export default function ChatPage() {
   const dispatch = useChatDispatch();
   const { currentConversationId } = useConversation();
 
-  const { sendMessage } = useSSEStream({
+  const { sendMessage, isPending } = useSSEStream({
     dispatch,
     conversationId: currentConversationId,
   });
@@ -21,7 +21,7 @@ export default function ChatPage() {
     sendMessage(message);
   };
 
-  const isStreaming = streamingStatus === 'streaming';
+  const isStreaming = streamingStatus === 'streaming' || isPending;
 
   return (
     <Box
